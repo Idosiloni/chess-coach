@@ -1,0 +1,1117 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Chess Coach</title>
+<style>
+  :root {
+    color-scheme:dark;
+    --bg:#101216; --panel:#181b21; --panel2:#20242c; --line:#2a2f39; --ink:#eef0f4; --mute:#97a0af;
+    --accent:#5fbf6b; --accent-ink:#08150b; --best:#3fb950; --good:#8bc34a; --inacc:#e3b341; --mistake:#f0883e; --blunder:#f85149; --blue:#58a6ff;
+    --habitbg:#14261a; --winbg:#17321c; --lossbg:#3a1b1a; --drawbg:#2c2c2c; --weakbg:#2a1d1b; --shadow:0 1px 2px rgba(0,0,0,.4);
+    --sqL:#ebecd0; --sqD:#739552;
+  }
+  :root[data-theme=light] {
+    color-scheme:light;
+    --bg:#f4f5f8; --panel:#ffffff; --panel2:#eef0f4; --line:#dde1e8; --ink:#1b2028; --mute:#5f6978;
+    --accent:#2f9e44; --accent-ink:#ffffff; --best:#2a9d3f; --good:#5a9a1f; --inacc:#b7881a; --mistake:#d9650f; --blunder:#d6342c; --blue:#1f6feb;
+    --habitbg:#e8f6ec; --winbg:#dcf3e1; --lossbg:#fde4e2; --drawbg:#e7e9ee; --weakbg:#fdeceb; --shadow:0 1px 3px rgba(20,30,50,.08);
+  }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--ink); font:15px/1.6 ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif; -webkit-font-smoothing:antialiased; }
+  main { max-width:1000px; margin:0 auto; padding:28px 16px 80px; }
+  header { display:flex; align-items:baseline; gap:12px; margin-bottom:22px; }
+  h1 { margin:0; font-size:24px; letter-spacing:-.01em; }
+  header span { color:var(--mute); font-size:14px; }
+  h2 { margin:0 0 4px; font-size:19px; letter-spacing:-.01em; }
+  h3 { margin:26px 0 12px; font-size:12px; text-transform:uppercase; letter-spacing:.09em; color:var(--mute); font-weight:600; }
+  .card { background:var(--panel); border:1px solid var(--line); border-radius:14px; padding:20px; margin-bottom:14px; box-shadow:var(--shadow); }
+  label { display:block; font-size:12px; color:var(--mute); margin-bottom:5px; }
+  input, textarea, select { width:100%; background:var(--bg); color:var(--ink); border:1px solid var(--line); border-radius:8px; padding:9px 11px; font:inherit; }
+  input:focus, textarea:focus, select:focus { outline:none; border-color:var(--blue); }
+  textarea { min-height:90px; font:12px ui-monospace,Menlo,monospace; resize:vertical; }
+  button { background:var(--accent); color:var(--accent-ink); border:0; border-radius:8px; padding:9px 16px; font:inherit; font-weight:600; cursor:pointer; }
+  button.sec { background:var(--panel2); color:var(--ink); border:1px solid var(--line); font-weight:500; }
+  button:hover:not(:disabled) { filter:brightness(1.1); }
+  button:disabled { opacity:.45; cursor:default; }
+  .row { display:flex; gap:10px; align-items:flex-end; flex-wrap:wrap; }
+  .row > div { flex:1; min-width:150px; }
+  .games { margin-top:10px; display:grid; gap:6px; }
+  .games button { text-align:left; background:var(--bg); color:var(--ink); font-weight:400; border:1px solid var(--line); display:flex; gap:10px; align-items:center; }
+  .games button:hover { border-color:var(--accent); }
+  .pill { font-size:11px; padding:1px 8px; border-radius:99px; font-weight:600; }
+  .win { background:var(--winbg); color:var(--best); } .loss { background:var(--lossbg); color:var(--blunder); } .draw { background:var(--drawbg); color:var(--mute); }
+  .mute { color:var(--mute); } .small { font-size:13px; }
+  .bar { height:6px; background:var(--bg); border-radius:3px; overflow:hidden; margin-top:12px; }
+  .bar > i { display:block; height:100%; width:0; background:var(--accent); transition:width .15s; }
+
+  /* summary */
+  .sumgrid { display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:10px; }
+  .kpi { background:var(--bg); border:1px solid var(--line); border-radius:10px; padding:12px 14px; }
+  .kpi b { display:block; font-size:24px; letter-spacing:-.02em; line-height:1.2; }
+  .kpi span { font-size:12px; color:var(--mute); }
+  .cls { display:flex; flex-wrap:wrap; gap:8px; margin-top:12px; }
+  .cls span { font-size:12px; padding:3px 10px; border-radius:99px; background:var(--bg); border:1px solid var(--line); }
+  .dot { display:inline-block; width:8px; height:8px; border-radius:50%; margin-right:6px; }
+
+  /* board */
+  .board { position:relative; display:grid; grid-template-columns:repeat(8,1fr); aspect-ratio:1; width:100%; border-radius:6px; overflow:hidden; user-select:none; }
+  .sq { position:relative; background:var(--sqL); }
+  .sq.d { background:var(--sqD); }
+  .sq img { position:absolute; inset:0; width:100%; height:100%; pointer-events:none; }
+  .sq.last::before, .sq.sel::before { content:""; position:absolute; inset:0; background:rgba(255,220,60,.42); }
+  .sq.sel::before { background:rgba(80,160,255,.5); }
+  .sq.tgt::after { content:""; position:absolute; left:35%; top:35%; width:30%; height:30%; border-radius:50%; background:rgba(0,0,0,.22); }
+  .sq .co { position:absolute; font-size:10px; font-weight:700; opacity:.75; pointer-events:none; }
+  .sq .co.f { right:3px; bottom:1px; } .sq .co.r { left:3px; top:1px; }
+  .sq { color:var(--sqD); } .sq.d { color:var(--sqL); }
+  .board svg { position:absolute; inset:0; width:100%; height:100%; pointer-events:none; }
+  .board.click .sq { cursor:pointer; }
+
+  /* lessons */
+  .lesson { display:grid; grid-template-columns:minmax(0,340px) 1fr; gap:20px; }
+  @media (max-width:760px) { .lesson, .viewer { grid-template-columns:1fr !important; } }
+  .tag { display:inline-block; font-size:11px; font-weight:700; letter-spacing:.05em; text-transform:uppercase; color:var(--blunder); margin-bottom:6px; }
+  .lesson p { margin:8px 0; }
+  .habit { margin-top:12px; padding:10px 14px; background:var(--habitbg); border-left:3px solid var(--accent); border-radius:6px; }
+  .drill { margin-top:10px; padding:10px 12px; background:var(--bg); border:1px dashed var(--line); border-radius:8px; font-size:14px; }
+  .drill.ok { border-color:var(--best); color:var(--best); } .drill.no { border-color:var(--blunder); color:var(--blunder); }
+  .actions { display:flex; gap:8px; margin-top:10px; flex-wrap:wrap; }
+  .hidden { display:none !important; }
+  .line { font-family:ui-monospace,Menlo,monospace; font-size:13px; background:var(--bg); padding:2px 7px; border-radius:5px; }
+
+  /* viewer */
+  .viewer { display:grid; grid-template-columns:minmax(0,520px) 1fr; gap:18px; }
+  .bwrap { display:flex; gap:8px; }
+  .evbar { width:18px; flex:none; background:#222; border-radius:4px; overflow:hidden; position:relative; }
+  .evbar i { position:absolute; left:0; right:0; background:#f1f1f1; transition:height .2s; }
+  .moves { max-height:300px; overflow:auto; display:grid; grid-template-columns:34px 1fr 1fr; gap:2px; font-size:14px; align-content:start; }
+  .moves .n { color:var(--mute); padding:4px 0; text-align:right; padding-right:6px; }
+  .moves button { background:transparent; color:var(--ink); font-weight:500; text-align:left; padding:4px 8px; border-radius:5px; border:0; }
+  .moves button.cur { background:var(--panel2); outline:1px solid var(--blue); }
+  .nav { display:flex; gap:6px; margin:10px 0; }
+  .nav button { flex:1; }
+  .info { background:var(--bg); border:1px solid var(--line); border-radius:8px; padding:10px 12px; font-size:14px; min-height:84px; }
+  #graph { width:100%; height:90px; display:block; cursor:pointer; background:#2a2e36; border:1px solid var(--line); border-radius:8px; }
+  .c-best{color:var(--best)} .c-excellent{color:var(--good)} .c-good{color:var(--ink)} .c-inaccuracy{color:var(--inacc)} .c-mistake{color:var(--mistake)} .c-blunder{color:var(--blunder)}
+  .err { color:var(--blunder); }
+  .phase { display:flex; flex-direction:column; gap:8px; margin-top:4px; }
+  .phase div { display:grid; grid-template-columns:96px 1fr 44px; align-items:center; gap:10px; font-size:13px; }
+  .phase .t { height:8px; background:var(--bg); border-radius:4px; overflow:hidden; } .phase .t i { display:block; height:100%; background:var(--blue); }
+
+  /* ---- v3 UI ---- */
+  :focus-visible { outline:2px solid var(--blue); outline-offset:2px; }
+  button { transition:filter .15s, transform .05s, background .15s, border-color .15s; } button:active:not(:disabled) { transform:translateY(1px); }
+  .topbar { display:flex; align-items:center; justify-content:space-between; margin-bottom:6px; }
+  .brand { font-weight:700; font-size:17px; letter-spacing:-.01em; display:flex; align-items:center; gap:8px; }
+  .brand i { font-style:normal; font-size:22px; }
+  .iconbtn { background:var(--panel); color:var(--ink); border:1px solid var(--line); width:38px; height:38px; padding:0; border-radius:10px; font-size:17px; }
+  .hero { padding:26px 0 22px; }
+  .hero h1 { margin:0 0 10px; font-size:clamp(28px,5vw,40px); line-height:1.1; letter-spacing:-.03em; }
+  .hero p { margin:0 0 14px; color:var(--mute); font-size:17px; max-width:640px; }
+  .badges { display:flex; flex-wrap:wrap; gap:8px; }
+  .badges span { font-size:12.5px; padding:4px 11px; border-radius:99px; background:var(--panel); border:1px solid var(--line); color:var(--mute); }
+  .tabs { display:flex; gap:4px; background:var(--bg); padding:4px; border-radius:10px; width:max-content; max-width:100%; margin-bottom:16px; border:1px solid var(--line); }
+  .tab { background:transparent; color:var(--mute); font-weight:600; padding:7px 16px; border-radius:7px; }
+  .tab.on { background:var(--panel); color:var(--ink); box-shadow:var(--shadow); }
+  .opts, .how { margin-top:12px; font-size:14px; }
+  summary { cursor:pointer; color:var(--mute); } summary:hover { color:var(--ink); }
+  .opts .row { margin-top:10px; } .how ol { margin:8px 0 0; padding-left:20px; color:var(--mute); }
+  .status { display:flex; gap:14px; align-items:center; background:var(--panel); border:1px solid var(--line); border-radius:14px; padding:16px 18px; margin-bottom:14px; box-shadow:var(--shadow); }
+  .status:has(#msg:empty):has(#barwrap.hidden) { display:none; }
+  .status > div:last-child { flex:1; min-width:0; }
+  .spin { width:22px; height:22px; border-radius:50%; border:3px solid var(--line); border-top-color:var(--accent); animation:sp .8s linear infinite; display:none; flex:none; }
+  .status:has(#barwrap:not(.hidden)) .spin { display:block; }
+  @keyframes sp { to { transform:rotate(360deg); } }
+  #msg { font-size:14px; } #tip { font-size:13px; color:var(--mute); margin-top:6px; }
+  #barwrap.hidden + #tip { display:none; }
+  .jump { position:sticky; top:0; z-index:20; display:flex; gap:6px; overflow-x:auto; padding:10px 0; margin:0 0 4px; background:color-mix(in srgb, var(--bg) 88%, transparent); backdrop-filter:blur(8px); border-bottom:1px solid var(--line); }
+  .jump a { color:var(--mute); text-decoration:none; font-size:13.5px; font-weight:600; padding:6px 13px; border-radius:99px; white-space:nowrap; }
+  .jump a:hover { color:var(--ink); background:var(--panel); }
+  h3 { scroll-margin-top:60px; }
+  footer { margin-top:48px; padding-top:18px; border-top:1px solid var(--line); color:var(--mute); font-size:12.5px; line-height:1.7; }
+  footer a { color:var(--mute); }
+  .share { margin-top:14px; display:flex; gap:10px; align-items:center; flex-wrap:wrap; font-size:14px; }
+  .trow { display:grid; grid-template-columns:140px 1fr 150px; gap:10px; align-items:center; font-size:13px; margin:7px 0; }
+  .track { height:8px; background:var(--bg); border-radius:4px; overflow:hidden; border:1px solid var(--line); } .track i { display:block; height:100%; background:var(--blue); }
+  .sub { font-size:12.5px; color:var(--mute); margin:18px 0 6px; font-weight:600; }
+  .spark { width:100%; height:76px; display:block; background:var(--bg); border:1px solid var(--line); border-radius:8px; }
+  .optable { width:100%; border-collapse:collapse; font-size:14px; } .optable th { text-align:left; color:var(--mute); font-size:12px; font-weight:600; padding:6px 8px; }
+  .optable td { padding:8px; border-top:1px solid var(--line); } .optable tr.weak { background:var(--weakbg); }
+  .lesson { border-left:3px solid var(--blunder); }
+  @media (max-width:640px) {
+    .trow { grid-template-columns:96px 1fr; } .trow .mute { grid-column:1 / -1; margin-top:-4px; }
+    .optable th:nth-child(5), .optable td:nth-child(5) { display:none; }
+    .card { padding:16px; } .row > div { min-width:100%; } button { min-height:42px; } .tabs { width:100%; } .tab { flex:1; }
+  }
+  @media (prefers-reduced-motion:reduce) { * { animation:none !important; transition:none !important; scroll-behavior:auto !important; } }
+
+  .games { max-height:440px; overflow:auto; }
+  .games #batch { position:sticky; top:0; z-index:2; box-shadow:0 4px 8px -4px rgba(0,0,0,.35); }
+  .bgbar { position:fixed; left:50%; transform:translateX(-50%); bottom:14px; z-index:40; width:min(560px, calc(100% - 24px)); display:flex; gap:12px; align-items:center; background:var(--panel); border:1px solid var(--line); border-radius:14px; padding:12px 14px; box-shadow:0 8px 28px rgba(0,0,0,.35); font-size:13.5px; }
+  .bgbar .spin { display:block; } .bgbar.done .spin { display:none; }
+  /* ---- v4: stats + rundown ---- */
+  .hero-card { background:linear-gradient(135deg,var(--habitbg),var(--panel2)); border:1px solid var(--line); border-radius:12px; padding:16px 18px; }
+  .gcard { background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:14px 16px; margin-bottom:10px; box-shadow:var(--shadow); }
+  .ghead { display:flex; flex-wrap:wrap; align-items:center; gap:8px 10px; }
+  .gstat { margin-left:auto; font-weight:700; font-size:13px; } .ghead .sec { padding:5px 12px; font-size:13px; }
+  .trophy { font-size:12px; background:var(--habitbg); color:var(--best); padding:1px 9px; border-radius:99px; font-weight:600; }
+  .moments { margin-top:10px; display:grid; gap:6px; }
+  .moment { display:grid; grid-template-columns:1fr auto; gap:2px 12px; text-align:left; background:var(--bg); color:var(--ink); border:1px solid var(--line); border-radius:9px; padding:9px 12px; font-weight:400; }
+  .moment:hover:not(:disabled) { border-color:var(--blue); } .moment .go { grid-row:1 / span 2; grid-column:2; align-self:center; color:var(--blue); font-weight:600; font-size:13px; }
+  .moment:disabled { opacity:.7; cursor:default; }
+  .games button.done::after { content:'✓ analyzed'; margin-left:8px; color:var(--best); font-size:12px; font-weight:600; }
+  @media (max-width:640px) { .gstat { margin-left:0; width:100%; } }
+
+  /* ---- v7: dashboard + teaching ---- */
+  .dash { display:grid; grid-template-columns:repeat(3,1fr); gap:12px; }
+  .big { background:var(--panel); border:1px solid var(--line); border-radius:14px; padding:16px 18px; box-shadow:var(--shadow); display:flex; flex-direction:column; gap:4px; min-width:0; }
+  .bl { font-size:12px; font-weight:600; color:var(--mute); text-transform:uppercase; letter-spacing:.06em; }
+  .bv { font-size:38px; font-weight:800; letter-spacing:-.035em; line-height:1.1; } .bv .dim { color:var(--mute); font-weight:400; }
+  .bs { font-size:13px; color:var(--mute); min-height:20px; } .mini { width:100%; height:40px; margin-top:8px; overflow:visible; }
+  .chip { font-size:12px; font-weight:700; padding:1px 8px; border-radius:99px; } .chip.up { background:var(--winbg); color:var(--best); } .chip.down { background:var(--lossbg); color:var(--blunder); }
+  .rbar { display:flex; height:10px; border-radius:5px; overflow:hidden; background:var(--bg); margin:8px 0 2px; } .rbar i { display:block; height:100%; } .rbar .w { background:var(--best); } .rbar .d { background:#8b93a1; } .rbar .l { background:var(--blunder); }
+  .cols2 { display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-top:12px; }
+  .panel { background:var(--panel); border:1px solid var(--line); border-radius:14px; padding:16px 18px; box-shadow:var(--shadow); }
+  .panel h4 { margin:0 0 10px; font-size:13px; text-transform:uppercase; letter-spacing:.06em; color:var(--mute); }
+  .lrow { display:flex; justify-content:space-between; gap:12px; padding:9px 0; border-top:1px solid var(--line); font-size:14px; } .lrow:first-of-type { border-top:0; } .lrow b { font-variant-numeric:tabular-nums; }
+  .brow { display:grid; grid-template-columns:104px 1fr 42px; gap:10px; align-items:center; font-size:13.5px; padding:5px 0; } .brow b { text-align:right; font-variant-numeric:tabular-nums; }
+  .gap { height:10px; border-bottom:1px solid var(--line); margin-bottom:6px; }
+  .warn { font-style:normal; font-size:11px; font-weight:700; color:var(--mistake); text-transform:uppercase; letter-spacing:.04em; margin-left:4px; }
+  .train { display:grid; grid-template-columns:40px 1fr; gap:14px; }
+  .rank { width:34px; height:34px; border-radius:50%; background:var(--panel2); display:grid; place-items:center; font-weight:800; }
+  .teach { margin-top:14px; padding:14px 16px; border:1px solid var(--line); border-radius:12px; background:var(--bg); }
+  .teach .tt { font-weight:700; margin-bottom:6px; } .teach p { margin:6px 0; } .teach ol { margin:8px 0 10px; padding-left:20px; } .teach li { margin:4px 0; }
+  .practice { display:inline-block; font-size:13.5px; font-weight:600; color:var(--blue); text-decoration:none; } .practice:hover { text-decoration:underline; }
+  @media (max-width:760px) { .dash, .cols2 { grid-template-columns:1fr; } .bv { font-size:32px; } }
+</style>
+</head>
+<body>
+<main>
+  <div class="topbar"><div class="brand"><i>♞</i> Chess Coach</div><button class="iconbtn" id="theme" title="Toggle light / dark" aria-label="Toggle theme">◐</button></div>
+
+  <section class="hero">
+    <h1>Learn from every game you play.</h1>
+    <p>Load a chess.com game and get the 3 lessons that matter most, with puzzles to practice them, plus a tracker that shows the habits costing you games.</p>
+    <div class="badges"><span>100% free</span><span>Private: runs in your browser</span><span>Powered by Stockfish 19</span></div>
+  </section>
+
+  <section class="card">
+    <div class="tabs" role="tablist"><button class="tab on" data-tab="user" role="tab">chess.com username</button><button class="tab" data-tab="paste" role="tab">Paste a PGN</button></div>
+    <div id="tab-user">
+      <div class="row"><div><label for="user">Your chess.com username</label><input id="user" placeholder="e.g. magnuscarlsen" autocomplete="off" autocapitalize="off" spellcheck="false"></div><button id="fetch">Find my games</button></div>
+      <div class="row" style="margin-top:10px">
+        <div><label for="count">How many games</label><select id="count"><option value="12">Last 12</option><option value="25">Last 25</option><option value="50">Last 50</option><option value="100">Last 100</option></select></div>
+        <div><label for="tc">Game type</label><select id="tc"><option value="all">All (standard chess)</option><option value="rapid">Rapid</option><option value="blitz">Blitz</option><option value="bullet">Bullet</option><option value="daily">Daily</option></select></div>
+      </div>
+      <div id="games" class="games"></div>
+    </div>
+    <div id="tab-paste" class="hidden">
+      <label for="pgn">Paste your game here</label>
+      <textarea id="pgn" spellcheck="false" placeholder="[Event &quot;Live Chess&quot;]&#10;1. e4 e5 2. Nf3 …"></textarea>
+      <details class="how"><summary>How do I get a PGN?</summary><ol><li>Open the game on chess.com</li><li>Click the share icon (or "Share / Export")</li><li>Choose the <b>PGN</b> tab and copy it</li></ol></details>
+      <div class="row" style="margin-top:12px"><button id="go">Analyze this game</button></div>
+    </div>
+    <details class="opts"><summary>Options</summary><div class="row">
+      <div><label for="side">I played</label><select id="side"><option value="auto">Auto (from username)</option><option value="w">White</option><option value="b">Black</option></select></div>
+      <div><label for="depth">Analysis depth</label><select id="depth"><option value="12">Quick · depth 12 (rough)</option><option value="16" selected>Standard · depth 16 (recommended)</option><option value="20">Deep · depth 20 (slow)</option></select></div>
+    </div></details>
+  </section>
+
+  <div class="status" id="status"><div class="spin"></div><div><div id="msg"></div><div class="bar hidden" id="barwrap"><i id="bar"></i></div><div id="tip"></div></div></div>
+
+  <nav class="jump hidden" id="jump" aria-label="Sections"><a href="#s-summary">Summary</a><a href="#s-lessons">Key lessons</a><a href="#s-review">Game review</a><a href="#s-stats">Dashboard</a><a href="#s-progress">What to work on</a><a href="#s-games">Your games</a><a href="#s-openings">Openings</a></nav>
+  <div id="out"></div>
+  <div id="prog"></div>
+
+  <div class="card share"><b>Know someone who'd like this?</b><button class="sec" id="sharebtn">Copy link to share</button><span class="mute small" id="sharenote"></span></div>
+
+  <div class="bgbar hidden" id="bgbar" role="status"><div class="spin"></div><div style="flex:1;min-width:0"><div id="bgtext"></div><div class="bar" style="margin-top:6px"><i id="bgfill"></i></div><div class="small mute" style="margin-top:4px">You can keep browsing. Click any ✓ game to watch its review.</div></div><button class="sec hidden" id="stop">Stop</button></div>
+
+  <footer>
+    Everything runs on your device. Your games and progress are stored only in this browser and are never uploaded.<br>
+    Engine: <a href="https://github.com/official-stockfish/Stockfish" target="_blank" rel="noopener">Stockfish</a> 19 (GPLv3) via <a href="https://github.com/nmrugg/stockfish.js" target="_blank" rel="noopener">stockfish.js</a>, source code available at those links ·
+    Pieces: cburnett by Colin M.L. Burnett (GPLv2+) from <a href="https://lichess.org" target="_blank" rel="noopener">Lichess</a> · Move logic: chess.js (BSD).
+    Not affiliated with chess.com. Analysis is a learning aid, not a guarantee of best play.
+  </footer>
+</main>
+
+<script src="lib/chess.min.js"></script>
+<script>
+/* =============================== helpers =============================== */
+const $ = s => document.querySelector(s);
+const VAL = { p:1, n:3, b:3, r:5, q:9, k:0 };
+const NAME = { p:'pawn', n:'knight', b:'bishop', r:'rook', q:'queen', k:'king' };
+const clamp = (x, a, b) => Math.max(a, Math.min(b, x));
+const winPct = cp => 50 + 50 * (2 / (1 + Math.exp(-0.00368208 * clamp(cp, -1000, 1000))) - 1);
+const moveAcc = loss => clamp(103.1668 * Math.exp(-0.04354 * loss) - 3.1669, 0, 100);
+const uciOf = m => m.from + m.to + (m.promotion || '');
+const CLS = {
+  best:      { label:'Best',       sym:'★',  color:'var(--best)' },
+  excellent: { label:'Excellent',  sym:'',   color:'var(--good)' },
+  good:      { label:'Good',       sym:'',   color:'var(--mute)' },
+  inaccuracy:{ label:'Inaccuracy', sym:'?!', color:'var(--inacc)' },
+  mistake:   { label:'Mistake',    sym:'?',  color:'var(--mistake)' },
+  blunder:   { label:'Blunder',    sym:'??', color:'var(--blunder)' }
+};
+function fmtEval(cp, mate) {
+  if (mate != null) return (mate > 0 ? '+' : '-') + 'M' + Math.abs(mate);
+  if (Math.abs(cp) >= 9000) return (cp > 0 ? '+' : '-') + 'M' + (10000 - Math.abs(cp));
+  return (cp >= 0 ? '+' : '') + (cp / 100).toFixed(1);
+}
+function findMove(fen, uci) {
+  if (!uci) return null;
+  return new Chess(fen).moves({ verbose:true }).find(m => uciOf(m) === uci) || null;
+}
+function playPV(fen, pv, n) {
+  const g = new Chess(fen), out = [];
+  for (const u of pv.slice(0, n)) { const mv = g.move({ from:u.slice(0, 2), to:u.slice(2, 4), promotion:u[4] }); if (!mv) break; out.push(mv); }
+  return out;
+}
+function netMaterial(fen, pv, side, n = 4) {
+  let s = 0;
+  playPV(fen, pv, n).forEach(mv => {
+    const sign = mv.color === side ? 1 : -1;
+    if (mv.captured) s += sign * VAL[mv.captured];
+    if (mv.promotion) s += sign * (VAL[mv.promotion] - 1);
+  });
+  return s;
+}
+function sanLine(fen, pv, n = 4) {
+  const g = new Chess(fen), f = fen.split(' ');
+  let num = +f[5], t = f[1], parts = [];
+  pv.slice(0, n).forEach((u, j) => {
+    const mv = g.move({ from:u.slice(0, 2), to:u.slice(2, 4), promotion:u[4] }); if (!mv) return;
+    parts.push(t === 'w' ? `${num}.${mv.san}` : (j === 0 ? `${num}…${mv.san}` : mv.san));
+    if (t === 'b') num++; t = t === 'w' ? 'b' : 'w';
+  });
+  return parts.join(' ');
+}
+function targetsFrom(fen, sq) {
+  const p = new Chess(fen).get(sq); if (!p) return [];
+  const f = fen.split(' '); f[1] = p.color; f[3] = '-';
+  return new Chess(f.join(' ')).moves({ verbose:true }).filter(m => m.from === sq && m.captured).map(m => ({ sq:m.to, piece:m.captured }));
+}
+const phaseOf = (i, fen) => {
+  const mat = fen.split(' ')[0].replace(/[^nbrqNBRQ]/g, '').split('').reduce((s, c) => s + VAL[c.toLowerCase()], 0);
+  return mat <= 16 ? 'Endgame' : i < 20 ? 'Opening' : 'Middlegame';
+};
+const moveNo = i => Math.floor(i / 2) + 1;
+const moveTag = (i, san) => `${moveNo(i)}${i % 2 ? '…' : '.'}${san}`;
+
+/* =============================== board =============================== */
+class Board {
+  constructor(root) { this.root = root; root.classList.add('board'); }
+  render(fen, o = {}) {
+    const { flip = false, last = [], arrows = [], sel = null, targets = [], onSquare = null } = o;
+    const rows = fen.split(' ')[0].split('/'), pcs = {};
+    rows.forEach((row, ri) => { let f = 0; for (const ch of row) { if (/\d/.test(ch)) f += +ch; else { pcs['abcdefgh'[f] + (8 - ri)] = ch; f++; } } });
+    let h = '';
+    for (let r = 0; r < 8; r++) for (let c = 0; c < 8; c++) {
+      const file = flip ? 7 - c : c, rank = flip ? r : 7 - r, sq = 'abcdefgh'[file] + (rank + 1), p = pcs[sq];
+      const cls = ['sq', (file + rank) % 2 ? '' : 'd', last.includes(sq) ? 'last' : '', sel === sq ? 'sel' : '', targets.includes(sq) ? 'tgt' : ''].join(' ');
+      h += `<div class="${cls}" data-sq="${sq}">${p ? `<img src="pieces/${p === p.toUpperCase() ? 'w' : 'b'}${p.toUpperCase()}.svg" alt="">` : ''}`
+        + (c === 0 ? `<span class="co r">${rank + 1}</span>` : '') + (r === 7 ? `<span class="co f">${'abcdefgh'[file]}</span>` : '') + '</div>';
+    }
+    const ctr = sq => { const f = sq.charCodeAt(0) - 97, rk = +sq[1] - 1; return [(flip ? 7 - f : f) + .5, (flip ? rk : 7 - rk) + .5]; };
+    let svg = '<svg viewBox="0 0 8 8">';
+    arrows.forEach(a => {
+      if (!a.from || !a.to) return;
+      const [x1, y1] = ctr(a.from), [x2, y2] = ctr(a.to), dx = x2 - x1, dy = y2 - y1, L = Math.hypot(dx, dy), ux = dx / L, uy = dy / L;
+      const hx = x2 - ux * .32, hy = y2 - uy * .32;
+      svg += `<g opacity=".85" fill="${a.color}" stroke="${a.color}"><line x1="${x1}" y1="${y1}" x2="${hx}" y2="${hy}" stroke-width=".17" stroke-linecap="round"/>`
+        + `<polygon stroke="none" points="${x2 - ux * .05},${y2 - uy * .05} ${hx - uy * .22},${hy + ux * .22} ${hx + uy * .22},${hy - ux * .22}"/></g>`;
+    });
+    this.root.innerHTML = h + svg + '</svg>';
+    this.root.classList.toggle('click', !!onSquare);
+    if (onSquare) this.root.querySelectorAll('.sq').forEach(e => e.onclick = () => onSquare(e.dataset.sq));
+  }
+}
+
+/* =============================== engine =============================== */
+class Engine {
+  constructor() {
+    this.w = new Worker('engine/stockfish-19-lite-single.js'); this.hs = [];
+    this.w.onmessage = e => { const l = typeof e.data === 'string' ? e.data : String(e.data); this.hs.slice().forEach(h => h(l)); };
+  }
+  send(c) { this.w.postMessage(c); }
+  once(pred) { return new Promise(res => { const h = l => { if (pred(l)) { this.hs = this.hs.filter(x => x !== h); res(l); } }; this.hs.push(h); }); }
+  async init() {
+    // The engine may still be loading when the first command is sent, so resend 'uci' until it answers.
+    const ready = this.once(l => l === 'uciok'); let ok = false; ready.then(() => ok = true);
+    for (let t = 0; t < 60 && !ok; t++) { this.send('uci'); await Promise.race([ready, new Promise(r => setTimeout(r, 500))]); }
+    if (!ok) throw new Error('engine did not start');
+    this.send('setoption name MultiPV value 2'); this.send('isready'); await this.once(l => l === 'readyok');
+  }
+  analyse(fen, depth) {
+    const lines = {};
+    return new Promise(res => {
+      const h = l => {
+        if (l.startsWith('info') && l.includes(' pv ') && !/bound/.test(l)) {
+          const mp = +((l.match(/multipv (\d+)/) || [0, 1])[1]), m = l.match(/score (cp|mate) (-?\d+)/);
+          if (m) { const v = +m[2]; lines[mp] = { cp:m[1] === 'cp' ? v : Math.sign(v) * (10000 - Math.abs(v)), mate:m[1] === 'mate' ? v : null, pv:l.split(' pv ')[1].trim().split(' ') }; }
+        } else if (l.startsWith('bestmove')) { this.hs = this.hs.filter(x => x !== h); res(Object.keys(lines).sort().map(k => lines[k])); }
+      };
+      this.hs.push(h); this.send('position fen ' + fen); this.send('go depth ' + depth);
+    });
+  }
+}
+class EnginePool {
+  constructor(n) { this.n = n; this.workers = []; this.idle = []; this.hi = []; this.lo = []; this.memo = new Map(); }
+  async init() {
+    const made = await Promise.allSettled(Array.from({ length:this.n }, async () => { const e = new Engine(); await e.init(); return e; }));
+    this.workers = made.filter(m => m.status === 'fulfilled').map(m => m.value); this.idle = [...this.workers];
+    if (!this.workers.length) throw new Error('engine did not start');
+  }
+  submit(fen, depth, prio) {
+    const hit = this.memo.get(fen);
+    if (hit && hit.depth >= depth) return Promise.resolve(hit.res);
+    return new Promise((resolve, reject) => { (prio === 'lo' ? this.lo : this.hi).push({ fen, depth, resolve, reject }); this.pump(); });
+  }
+  pump() {
+    while (this.idle.length && (this.hi.length || this.lo.length)) {
+      const w = this.idle.pop(), t = this.hi.length ? this.hi.shift() : this.lo.shift();
+      w.analyse(t.fen, t.depth).then(res => { this.memo.set(t.fen, { depth:t.depth, res }); t.resolve(res); }, t.reject).finally(() => { this.idle.push(w); this.pump(); });
+    }
+  }
+  // Analyse many positions across all workers; results come back in input order.
+  map(fens, depth, onDone, prio = 'hi') { let d = 0; return Promise.all(fens.map(f => this.submit(f, depth, prio).then(r => { onDone(++d); return r; }))); }
+}
+const poolSize = () => clamp((navigator.hardwareConcurrency || 4) - 1, 1, /Mobi|Android/i.test(navigator.userAgent) ? 2 : 6);
+let cancelBatch = false, bgBusy = false, poolPromise = null;
+function getPool() {
+  if (!poolPromise) poolPromise = (async () => { const p = new EnginePool(poolSize()); await p.init(); return p; })().catch(e => { poolPromise = null; throw e; });
+  return poolPromise;
+}
+const FG = { msg:t => { $('#msg').textContent = t; }, bar:p => { $('#bar').style.width = p + '%'; } };
+const BG = { msg:t => { $('#bgtext').textContent = t; }, bar:p => { $('#bgfill').style.width = p + '%'; } };
+
+/* =============================== chess.com =============================== */
+$('#fetch').onclick = async () => {
+  const u = $('#user').value.trim().toLowerCase(), box = $('#games'); if (!u) return;
+  const want = +$('#count').value, tc = $('#tc').value;
+  box.textContent = 'Loading…';
+  try {
+    const a = await (await fetch(`https://api.chess.com/pub/player/${encodeURIComponent(u)}/games/archives`)).json();
+    if (!a.archives || !a.archives.length) throw new Error('No games found for that username.');
+    let games = [];
+    for (let i = a.archives.length - 1; i >= 0 && games.length < want; i--) {
+      box.textContent = `Loading games… ${games.length} found`;
+      const month = (await (await fetch(a.archives[i])).json()).games || [];
+      games = games.concat(month.reverse().filter(g => g.rules === 'chess' && g.pgn && (tc === 'all' || g.time_class === tc)));
+    }
+    games = games.slice(0, want);
+    if (!games.length) throw new Error('No matching games found. Try a different game type.');
+    box.innerHTML = ''; loadedGames = [];
+    games.forEach(g => { loadedGames.push({ pgn:g.pgn, side:g.white.username.toLowerCase() === u ? 'w' : 'b', id:pgnId(g.pgn, g.url) }); });
+    const bb = document.createElement('button'); bb.id = 'batch'; bb.className = 'sec'; bb.onclick = runBatch; box.appendChild(bb);
+    games.forEach(g => {
+      const mine = g.white.username.toLowerCase() === u ? g.white : g.black, opp = mine === g.white ? g.black : g.white;
+      const draws = ['agreed', 'repetition', 'stalemate', 'insufficient', '50move', 'timevsinsufficient'];
+      const [txt, cls] = mine.result === 'win' ? ['Won', 'win'] : draws.includes(mine.result) ? ['Draw', 'draw'] : ['Lost', 'loss'];
+      const b = document.createElement('button'); b.dataset.id = pgnId(g.pgn, g.url);
+      b.innerHTML = `<span class="pill ${cls}">${txt}</span><span>${mine === g.white ? '⚪' : '⚫'} vs <b>${esc(opp.username)}</b> (${opp.rating})</span><span class="mute small" style="margin-left:auto">${g.time_class} · ${new Date(g.end_time * 1000).toLocaleDateString()}</span>`;
+      b.onclick = () => { $('#pgn').value = g.pgn; $('#side').value = mine === g.white ? 'w' : 'b'; run(); };
+      box.appendChild(b);
+    });
+    markCached();
+  } catch (e) { box.innerHTML = `<span class="err">${esc(e.message || 'Could not reach chess.com.')}</span>`; }
+};
+
+/* =============================== analysis =============================== */
+const esc = t => String(t == null ? '' : t).replace(/[&<>"]/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;' }[c]));
+let loadedGames = [], busy = false;
+function setBusy(b) {
+  busy = b; $('#go').disabled = b;
+  $('#barwrap').classList.toggle('hidden', !b); if (!b) $('#bar').style.width = '0';
+}
+
+async function analyzePGN(pgn, sideSel, depth, prefix = '', ui = FG, prio = 'hi') {
+  const game = new Chess();
+  if (!pgn || !game.load_pgn(pgn, { sloppy:true })) throw new Error('Could not read that PGN.');
+  const moves = game.history({ verbose:true });
+  if (moves.length < 6) throw new Error('That game is too short to learn from.');
+  const hdr = game.header();
+  let side = sideSel;
+  if (side === 'auto') { const u = $('#user').value.trim().toLowerCase(); side = u && (hdr.Black || '').toLowerCase() === u ? 'b' : 'w'; }
+  const rp = new Chess(), fens = [rp.fen()];
+  moves.forEach(m => { m.uci = uciOf(m); rp.move({ from:m.from, to:m.to, promotion:m.promotion }); fens.push(rp.fen()); });
+  const id = hdr.Link || [hdr.White, hdr.Black, hdr.Date, hdr.StartTime, moves.length].join('|');
+  let L = readCache(id, depth);
+  if (L) ui.msg(prefix + 'Loading your saved analysis…');
+  else {
+    ui.msg(prefix + 'Starting engine…');
+    let pl;
+    try { pl = await getPool(); }
+    catch (e) { throw new Error('Could not start the engine. Open this page through a web server (not file://).'); }
+    const need = fens.filter(f => !new Chess(f).game_over());
+    const res = await pl.map(need, depth, d => {
+      ui.bar(100 * d / need.length);
+      ui.msg(`${prefix}Analyzing position ${d} of ${need.length} · ${pl.workers.length} engine${pl.workers.length > 1 ? 's' : ''} working…`);
+    }, prio);
+    let p = 0;
+    L = fens.map(f => { const g = new Chess(f); return g.in_checkmate() ? [{ cp:-10000, mate:0, pv:[] }] : g.game_over() ? [{ cp:0, mate:null, pv:[] }] : res[p++]; });
+    writeCache(id, { pgn, side, depth, L });
+  }
+
+  const data = moves.map((m, i) => {
+    const Li = L[i], before = Li[0].cp, k = Li.findIndex(l => l.pv[0] === m.uci);
+    const after = k >= 0 ? Li[k].cp : -L[i + 1][0].cp;
+    const loss = k === 0 ? 0 : Math.max(0, winPct(before) - winPct(after));
+    const cls = k === 0 ? 'best' : loss < 2 ? 'excellent' : loss < 5 ? 'good' : loss < 10 ? 'inaccuracy' : loss < 20 ? 'mistake' : 'blunder';
+    return { i, m, color:m.color, before, after, loss, cls, acc:moveAcc(loss), phase:phaseOf(i, fens[i]), time:null,
+      only:(k === 0 && !!Li[1] && winPct(Li[0].cp) - winPct(Li[1].cp) >= 15), accept:Li.filter((l, j) => j === 0 || winPct(Li[0].cp) - winPct(l.cp) <= 3).map(l => l.pv[0]) };
+  });
+  const clks = [...pgn.matchAll(/\[%clk (\d+):(\d+):(\d+(?:\.\d+)?)\]/g)].map(x => +x[1] * 3600 + +x[2] * 60 + +x[3]);
+  const tc = (hdr.TimeControl || '').match(/^(\d+)(?:\+(\d+))?$/);
+  if (tc && clks.length >= moves.length) {
+    const inc = +(tc[2] || 0), prev = { w:+tc[1], b:+tc[1] };
+    data.forEach((d, i) => { d.time = Math.max(0, prev[d.color] + inc - clks[i]); prev[d.color] = clks[i]; });
+  }
+  return { hdr, side, moves, fens, L, data, depth, id };
+}
+
+async function run() {
+  if (busy) return;
+  $('#out').innerHTML = ''; setBusy(true);
+  try {
+    const ctx = await analyzePGN($('#pgn').value.trim(), $('#side').value, +$('#depth').value);
+    $('#msg').textContent = ''; setBusy(false);
+    render(ctx); saveGame(ctx); renderProgress();
+  } catch (e) { $('#msg').innerHTML = `<span class="err">${esc(e.message)}</span>`; setBusy(false); }
+}
+$('#go').onclick = run;
+
+async function runBatch() {
+  if (bgBusy) return;
+  const cached = readAll(), todo = loadedGames.filter(g => !cached[g.id]);
+  if (!todo.length) { FG.msg('All of these games are already analyzed. Scroll down to review them.'); return; }
+  const depth = +$('#depth').value; let done = 0;
+  const ui = { msg:BG.msg, bar:p => BG.bar((done + p / 100) / todo.length * 100) };
+  bgBusy = true; cancelBatch = false; markCached(); $('#bgbar').classList.remove('done');
+  $('#bgbar').classList.remove('hidden'); $('#stop').classList.remove('hidden'); BG.bar(0);
+  try {
+    for (const g of todo) {
+      if (cancelBatch) break;
+      const ctx = await analyzePGN(g.pgn, g.side, depth, `Game ${done + 1} of ${todo.length} · `, ui, 'lo');
+      saveGame(ctx); done++; renderProgress();
+    }
+    BG.msg(cancelBatch ? `Stopped. ${done} of ${todo.length} games analyzed and saved.` : `✓ Done. ${done} games analyzed. See your stats and key moments below.`);
+  } catch (e) { BG.msg('Something went wrong: ' + e.message); }
+  bgBusy = false; BG.bar(100); $('#bgbar').classList.add('done'); $('#stop').classList.add('hidden'); $('#stop').textContent = 'Stop'; markCached();
+  setTimeout(() => { if (!bgBusy) $('#bgbar').classList.add('hidden'); }, 12000);
+}
+
+/* =============================== lesson engine =============================== */
+/* =============================== teaching content =============================== */
+const TEACH = {
+  'Allowed checkmate': { idea:'Checkmates come from a chain of checks. Your king needs escape squares and defenders. Once those are gone, a single check ends the game.',
+    steps:['Before you move, list every check your opponent has afterwards, even the ones that look silly.', 'For each check ask: can I block, capture the checker or step away? If not, do not play that move.', 'Keep the pawns in front of your castled king where they are unless you have a clear reason to push them.', 'Give your king a "luft" (escape square) with h3 or h6 once the rooks are on the back rank.'], t:'mateIn1', l:'Checkmate patterns' },
+  'Missed checkmate': { idea:'Mates are found by looking at forcing moves in order: checks first, then moves that take away the king\'s escape squares.',
+    steps:['Write down ALL checks you have, even ones that give up a piece.', 'After each check, count the king\'s escape squares. If one move covers them all, it is mate.', 'Look for back-rank mates whenever the enemy king is boxed in by its own pawns.'], t:'mateIn2', l:'Mate in 2 puzzles' },
+  'Hung a piece': { idea:'A piece is "hanging" when it can be captured for free: it is attacked and not defended enough. Leaving pieces hanging decides most games below 1800.',
+    steps:['After you pick a move, say out loud: "What does this leave undefended?"', 'List every capture your opponent has after your move. If one wins material, choose a different move.', 'Count attackers against defenders on a square before you rely on it.', 'Re-check the piece you just moved AND the pieces it used to protect.'], t:'hangingPiece', l:'Hanging piece puzzles' },
+  'Fork': { idea:'A fork is one move that attacks two things at once, so the opponent can only save one. Knights fork best, because their L-shaped jump is hard to guard against.',
+    steps:['Look at every square an enemy knight (or pawn) could reach next move. Would it attack two of your pieces?', 'If so, move one piece, protect both, or take that square away.', 'On your own turn, hunt for squares where your knight or pawn hits two undefended targets.'], t:'fork', l:'Fork puzzles' },
+  'Greedy capture': { idea:'A "free" pawn is rarely free. Capturing pulls a piece away from a job (defending, developing) and often opens a line for the opponent.',
+    steps:['Ask what the capturing piece was protecting before it moved.', 'Check your opponent\'s best reply: a check, a capture or a threat that wins more than a pawn?', 'If you are behind in development or your king is unsafe, decline the pawn.'], t:'hangingPiece', l:'Hanging piece puzzles' },
+  'Tactic allowed': { idea:'Tactics are short, forcing sequences of checks, captures and threats. You can avoid most of them by looking at the opponent\'s forcing moves after each of your candidate moves.',
+    steps:['For your top candidate move, list the opponent\'s checks, captures and threats.', 'Follow each one for two moves.', 'Play the candidate where none of them works.'], t:'defensiveMove', l:'Defensive-move puzzles' },
+  'Missed material': { idea:'Free material appears when the opponent leaves a piece undefended or attacked twice. You find it by asking what their last move changed.',
+    steps:['At the start of every turn ask: what did my opponent\'s last move leave undefended?', 'Check each enemy piece: is it defended? Is it attacked by something worth less?', 'Look at captures first, and calculate the recapture before you play.'], t:'crushing', l:'Win-material puzzles' },
+  'Missed fork': { idea:'Forks win material because one piece attacks two targets. Look for squares where your knight, pawn or queen can hit two loose pieces or a piece and the king.',
+    steps:['List your knight moves and queen checks first.', 'For each landing square, count the enemy pieces it would attack.', 'Prefer forks that come with check, because the opponent cannot ignore them.'], t:'fork', l:'Fork puzzles' },
+  'Missed tactic': { idea:'Most winning tactics begin with a forcing move. Checking checks, captures and threats first will find them far more often than looking at quiet moves.',
+    steps:['Each turn scan in this order: checks, captures, threats.', 'Follow every forcing line until it ends, then compare the final positions.', 'Notice what the opponent\'s last move weakened.'], t:'crushing', l:'Win-material puzzles' },
+  'King safety': { idea:'An uncastled king in the centre becomes a target as soon as lines open. Safety first, then the attack.',
+    steps:['Castle by move 8 to 10 in most openings.', 'Before you open the centre (pawn breaks, big trades), check where your king is.', 'If you cannot castle, plan the king\'s route to safety or keep the centre closed.'], t:'opening', l:'Opening puzzles' },
+  'Opening': { idea:'In the opening you are racing to develop. Every move should do one of three things: develop a piece, fight for the centre, or get your king safe.',
+    steps:['Start with a centre pawn (e4/d4 or e5/d5).', 'Develop knights, then bishops, before moving any piece twice.', 'Castle early, then connect your rooks.', 'Do not grab flank pawns or send the queen out until you are developed.'], t:'opening', l:'Opening puzzles' },
+  'Endgame': { idea:'In endgames the king becomes a fighting piece and every tempo (single move) counts.',
+    steps:['Bring your king toward the centre.', 'Put rooks behind passed pawns and on open files.', 'Count pawn races: how many moves does each side need to promote?', 'When ahead, trade pieces, not pawns.'], t:'endgame', l:'Endgame puzzles' },
+  'Positional slip': { idea:'Quiet moves are chosen by asking what your opponent wants and improving your least active piece.',
+    steps:['Ask: what is my opponent threatening or planning?', 'Find your worst-placed piece and give it a better square.', 'Prefer moves that improve your position without creating a weakness.'], t:'quietMove', l:'Quiet-move puzzles' }
+};
+function teachHtml(tag) {
+  const t = TEACH[tag]; if (!t) return '';
+  return `<div class="teach"><div class="tt">📘 How to play this right</div><p>${t.idea}</p><ol>${t.steps.map(x => `<li>${x}</li>`).join('')}</ol>
+    <a class="practice" href="https://lichess.org/training/${t.t}" target="_blank" rel="noopener">Practice this free on Lichess: ${t.l} ↗</a></div>`;
+}
+function isAttacked(fen, sq, byColor) {
+  const f = fen.split(' '); f[1] = byColor; f[3] = '-';
+  try { return new Chess(f.join(' ')).moves({ verbose:true }).some(mv => mv.to === sq && mv.captured); } catch (e) { return false; }
+}
+function whyBest(bm, fb, played) {
+  if (!bm || bm.san === played.san) return '';
+  const bits = [], opp = bm.color === 'w' ? 'b' : 'w';
+  if (bm.flags.includes('k') || bm.flags.includes('q')) bits.push('it castles, tucking the king away and bringing a rook into play');
+  if (/#/.test(bm.san)) bits.push('it is checkmate');
+  else if (/\+/.test(bm.san)) bits.push('it gives check, which forces a reply');
+  if (bm.captured) bits.push(`it wins the ${NAME[bm.captured]} on ${bm.to}`);
+  if (bm.promotion) bits.push('it promotes a pawn');
+  if (!bm.captured && bm.piece !== 'k' && isAttacked(fb, bm.from, opp)) bits.push(`it moves your ${NAME[bm.piece]} out of an attack`);
+  if (bm.piece === 'p' && ['d4', 'e4', 'd5', 'e5'].includes(bm.to) && !bm.captured) bits.push('it claims space in the centre');
+  const home = bm.color === 'w' ? ['b1', 'g1', 'c1', 'f1'] : ['b8', 'g8', 'c8', 'f8'];
+  if ((bm.piece === 'n' || bm.piece === 'b') && home.includes(bm.from) && !bm.captured) bits.push(`it develops your ${NAME[bm.piece]} to ${bm.to}`);
+  if (!bits.length) return '';
+  const j = bits.length === 1 ? bits[0] : bits.slice(0, -1).join(', ') + ' and ' + bits[bits.length - 1];
+  return `<b>Why ${bm.san} is better:</b> ${j}.`;
+}
+
+function buildLesson(d, ctx) {
+  const { fens, L } = ctx, i = d.i, m = d.m, me = d.color;
+  const fb = fens[i], fa = fens[i + 1];
+  const bestUci = L[i][0].pv[0], bm = findMove(fb, bestUci);
+  const oppPV = (L[i + 1][0].pv || []), om = findMove(fa, oppPV[0]);
+  const bestSan = bm ? bm.san : '?';
+  const netAfter = netMaterial(fa, oppPV, me, 4), netBest = netMaterial(fb, L[i][0].pv, me, 4);
+  const gain = m.captured ? VAL[m.captured] : 0, diff = netBest - (gain + netAfter);
+  const betterLine = sanLine(fb, L[i][0].pv, 4), punishLine = oppPV.length ? sanLine(fa, oppPV, 4) : '';
+  const cmpTxt = `Your winning chances fell from <b>${Math.round(winPct(d.before))}%</b> to <b>${Math.round(winPct(d.after))}%</b>.`;
+  let tag, title, what, lesson, habit;
+
+  if (d.after <= -9000 && d.before > -9000) {
+    const n = 10000 + d.after; // plies... mate in n moves for opponent
+    tag = 'Allowed checkmate'; title = 'You walked into a forced checkmate';
+    what = `After <b>${m.san}</b> the engine finds a forced mate${n > 0 && n < 9 ? ` in ${n}` : ''}: <span class="line">${punishLine}</span>.`;
+    lesson = bestSan !== m.san ? `<b>${bestSan}</b> kept the king safe.` : '';
+    habit = 'Before you press the move, list every check your opponent has after it. If one of them leaves your king with no escape square, stop.';
+  } else if (d.before >= 9000 && d.after < 9000) {
+    tag = 'Missed checkmate'; title = `You had a forced mate in ${10000 - d.before}`;
+    what = `Instead of <b>${m.san}</b>, <b>${bestSan}</b> wins by force: <span class="line">${betterLine}</span>.`;
+    lesson = '';
+    habit = 'When the enemy king is exposed, write down every check you have, then every move that takes away its escape squares. Forcing moves first.';
+  } else if (diff >= 2 && d.loss >= 10 && netAfter <= -2) {
+    if (om && om.captured && VAL[om.captured] >= 3) {
+      const moved = om.to === m.to;
+      tag = 'Hung a piece';
+      title = moved ? `Your ${NAME[om.captured]} could simply be taken` : `You left your ${NAME[om.captured]} unprotected`;
+      what = `After <b>${m.san}</b>, your opponent plays <b>${om.san}</b> and wins material: <span class="line">${punishLine}</span>.`;
+      lesson = moved ? `The square ${m.to} was attacked and not defended enough.` : `Your ${NAME[om.captured]} on ${om.to} was attacked and your move did nothing about it.`;
+      habit = 'Safety check before every move: "What can my opponent capture after this?" Look at the piece you move AND at what it stops protecting.';
+    } else {
+      const g3 = new Chess(fa); g3.move({ from:om.from, to:om.to, promotion:om.promotion });
+      const tg = targetsFrom(g3.fen(), om.to).filter(t => VAL[t.piece] >= 3);
+      if (tg.length >= 2 || (g3.in_check() && tg.length >= 1)) {
+        tag = 'Fork'; title = 'You allowed a fork';
+        what = `<b>${om.san}</b> attacks two things at once${g3.in_check() ? ' (including your king)' : ''}: <span class="line">${punishLine}</span>.`;
+        lesson = 'A forking piece wins material because you can only answer one threat.';
+        habit = 'Look for squares where an enemy knight (or pawn) could land and hit two of your pieces. If one exists, move or protect before it arrives.';
+      } else if (m.captured && VAL[m.captured] <= 1) {
+        tag = 'Greedy capture'; title = 'The pawn was poisoned';
+        what = `Grabbing the pawn with <b>${m.san}</b> allowed <b>${om.san}</b>: <span class="line">${punishLine}</span>.`;
+        lesson = 'You won a pawn but lost more than a pawn back.';
+        habit = 'Before capturing, ask what the capture leaves behind. Free material is often bait.';
+      } else {
+        tag = 'Tactic allowed'; title = 'Your move allowed a tactic';
+        what = `After <b>${m.san}</b> the engine finds <span class="line">${punishLine}</span>, which wins material.`;
+        lesson = '';
+        habit = 'Check your opponent\'s forcing replies (checks, captures, threats) after every candidate move, not just yours.';
+      }
+    }
+  } else if (netBest >= 2 && diff >= 2 && d.loss >= 10 && bm) {
+    const g4 = new Chess(fb); g4.move({ from:bm.from, to:bm.to, promotion:bm.promotion });
+    const tg = bm.captured ? [] : targetsFrom(g4.fen(), bm.to).filter(t => VAL[t.piece] >= 3);
+    if (bm.captured) { tag = 'Missed material'; title = `You could have won a ${NAME[bm.captured]}`; }
+    else if (tg.length >= 2 || (g4.in_check() && tg.length)) { tag = 'Missed fork'; title = 'You had a fork available'; }
+    else { tag = 'Missed tactic'; title = 'There was a winning tactic'; }
+    what = `Instead of <b>${m.san}</b>, <b>${bestSan}</b> wins material: <span class="line">${betterLine}</span>.`;
+    lesson = '';
+    habit = 'Each turn, scan in this order: checks, captures, threats. Look at what your opponent\'s last move left undefended.';
+  } else if (om && om.san.includes('+') && d.loss >= 10 && (k0 => k0 && k0.type === 'k' && k0.color === me)(new Chess(fa).get(me === 'w' ? 'e1' : 'e8'))) {
+    tag = 'King safety'; title = 'Your king was still in the centre';
+    what = `After <b>${m.san}</b> your opponent starts with a check, <b>${om.san}</b>, and your uncastled king is in trouble: <span class="line">${punishLine}</span>.`;
+    lesson = bestSan !== m.san ? `<b>${bestSan}</b> was the safer way to continue.` : '';
+    habit = 'Castle early. Before opening the position (captures, pawn breaks), ask whether your king is safe from checks on the open files and diagonals.';
+  } else if (i < 20) {
+    const home = me === 'w' ? ['b1', 'g1', 'c1', 'f1'] : ['b8', 'g8', 'c8', 'f8'], gg = new Chess(fa);
+    const undeveloped = home.filter(s => { const p = gg.get(s); return p && p.color === me && (p.type === 'n' || p.type === 'b'); }).length;
+    tag = 'Opening'; title = 'The opening went off track';
+    what = `<b>${m.san}</b> was not the most useful move here. ${bm ? `<b>${bestSan}</b> was stronger` : 'A different move was stronger'}${betterLine ? ` (<span class="line">${betterLine}</span>)` : ''}.`;
+    lesson = undeveloped >= 2 ? `After your move you still had <b>${undeveloped}</b> minor pieces on their starting squares.` : 'In the opening, every move should develop a piece, fight for the centre, or get your king safe.';
+    habit = 'Opening checklist: control the centre, develop knights then bishops, castle by move 10, and avoid moving the same piece twice without a reason.';
+  } else if (d.phase === 'Endgame') {
+    tag = 'Endgame'; title = 'The endgame needed more precision';
+    what = `<b>${m.san}</b> let the advantage slip. ${bm ? `<b>${bestSan}</b> was best` : ''}${betterLine ? `: <span class="line">${betterLine}</span>` : ''}.`;
+    lesson = 'Endgames are decided by king activity, passed pawns and counting tempi.';
+    habit = 'In endgames, bring your king toward the action and count pawn races move by move before committing.';
+  } else {
+    const kind = !bm ? 'a different move' : bm.flags.includes('k') || bm.flags.includes('q') ? 'castling' : bm.captured ? `capturing the ${NAME[bm.captured]}` : /[+#]/.test(bm.san) ? 'a check' : bm.piece === 'p' ? 'a pawn move' : `a ${NAME[bm.piece]} move to ${bm.to}`;
+    tag = 'Positional slip'; title = 'A stronger plan was available';
+    what = `<b>${m.san}</b> gave away part of your advantage. The engine preferred <b>${bestSan}</b> (${kind})${betterLine ? `: <span class="line">${betterLine}</span>` : ''}.`;
+    lesson = punishLine ? `Your opponent's best answer to your move was <b>${om ? om.san : ''}</b>.` : '';
+    habit = 'Before moving, ask two questions: what is my opponent threatening, and which of my pieces is doing the least?';
+  }
+  const rushed = d.time != null && d.time <= 3 ? `<p class="mute small">You played this move in <b>${d.time.toFixed(1)}s</b>. Moves like this are worth a slower look.</p>` : d.time != null ? `<p class="mute small">Time spent on this move: ${d.time.toFixed(0)}s.</p>` : '';
+  const prompt = `You are a friendly, precise chess coach. Explain ONE mistake from my game so I can learn from it.
+
+FACTS (computed by Stockfish 19 at depth ${ctx.depth}; treat them as correct):
+- I played ${me === 'w' ? 'White' : 'Black'}. Game phase: ${d.phase}.
+- Position before my move (FEN): ${fb}
+- My move (move ${moveNo(i)}): ${m.san}
+- Engine's best move instead: ${bestSan}
+- Best line: ${betterLine || 'n/a'}
+- What my move allowed (engine's reply line): ${punishLine || 'n/a'}
+- Winning chances for me: ${Math.round(winPct(d.before))}% before, ${Math.round(winPct(d.after))}% after (${CLS[d.cls].label.toLowerCase()}).
+- Pattern the tool detected: ${tag}${d.time != null ? `\n- Time I spent on this move: ${d.time.toFixed(0)} seconds.` : ''}
+
+RULES:
+- Only use moves that appear in the facts above. Do NOT calculate or invent new variations. If you are unsure, say so.
+- Write for a club player (about 800-1400 rating). Plain language, no jargon without a short definition.
+
+ANSWER IN THIS FORMAT:
+1. What I was probably thinking (1-2 sentences).
+2. What actually went wrong, concretely (2-3 sentences, refer to squares and pieces).
+3. Why the best move works (2 sentences).
+4. One rule or habit I can use in my next game.
+5. A 1-question quiz to test whether I understood.`;
+  return { d, tag, title, prompt, html:`<p>${what}</p>${lesson ? `<p>${lesson}</p>` : ''}${whyBest(bm, fb, m) ? `<p>${whyBest(bm, fb, m)}</p>` : ''}<p>${cmpTxt}</p>${rushed}`, habit, bestUci, bestSan, fb, oppSan:om ? om.san : '' };
+}
+
+function pickLessons(ctx) {
+  const mine = ctx.data.filter(d => d.color === ctx.side);
+  const pool = th => [...mine].filter(d => d.loss >= th && winPct(d.before) >= 8).sort((a, b) => b.loss - a.loss);
+  const out = [];
+  for (const th of [10, 5]) {
+    pool(th).forEach(d => { if (out.length < 3 && out.every(p => Math.abs(p.i - d.i) >= 4)) out.push(d); });
+    if (out.length >= 3) break;
+  }
+  return out.sort((a, b) => a.i - b.i).map(d => buildLesson(d, ctx));
+}
+
+/* =============================== render =============================== */
+function render(ctx) {
+  const { hdr, side, data, L, fens, moves } = ctx;
+  const mine = data.filter(d => d.color === side), theirs = data.filter(d => d.color !== side);
+  const avg = a => a.length ? a.reduce((s, d) => s + d.acc, 0) / a.length : 0;
+  const count = (a, c) => a.filter(d => d.cls === c).length;
+  const opp = side === 'w' ? hdr.Black : hdr.White, me = side === 'w' ? hdr.White : hdr.Black;
+  const opening = (hdr.ECOUrl || '').split('/').pop().replace(/-/g, ' ').replace(/\d+\..*$/, '').trim();
+  const lessons = pickLessons(ctx), gs = gameStats(ctx);
+  const eloKpi = (gs.elo ? `<div class="kpi"><b>~${gs.elo}</b><span>estimated strength this game${gs.myElo ? ` · rated ${gs.myElo}` : ''}</span></div>` : '') + `<div class="kpi"><b>${gs.only}</b><span>only-moves found</span></div>`;
+
+  /* phase accuracy */
+  const ph = ['Opening', 'Middlegame', 'Endgame'].map(p => { const a = mine.filter(d => d.phase === p); return { p, n:a.length, acc:avg(a) }; }).filter(x => x.n);
+  const weakest = [...ph].filter(x => x.n >= 4).sort((a, b) => a.acc - b.acc)[0];
+
+  /* time insight */
+  let timeKpi = '';
+  const timed = mine.filter(d => d.time != null);
+  if (timed.length) {
+    const bad = mine.filter(d => d.cls === 'mistake' || d.cls === 'blunder');
+    const rushed = bad.filter(d => d.time != null && d.time <= 3).length;
+    timeKpi = `<div class="kpi"><b>${(timed.reduce((s, d) => s + d.time, 0) / timed.length).toFixed(1)}s</b><span>avg time per move${bad.length ? ` · ${rushed} of ${bad.length} big mistakes took ≤3s` : ''}</span></div>`;
+  }
+  const clsChips = Object.keys(CLS).map(c => `<span><i class="dot" style="background:${CLS[c].color}"></i>${count(mine, c)} ${CLS[c].label.toLowerCase()}</span>`).join('');
+
+  let h = `<h3 id="s-summary">Summary</h3><section class="card">
+    <h2>${me || 'You'} vs ${opp || 'opponent'}${hdr.Result ? ` <span class="mute" style="font-weight:400">· ${hdr.Result}</span>` : ''}</h2>
+    <div class="mute small" style="margin-bottom:14px">${opening ? opening + ' · ' : ''}${moves.length} moves · analyzed at depth ${ctx.depth}</div>
+    <div class="sumgrid">
+      <div class="kpi"><b>${avg(mine).toFixed(0)}%</b><span>your accuracy</span></div>
+      <div class="kpi"><b>${avg(theirs).toFixed(0)}%</b><span>opponent accuracy</span></div>
+      ${eloKpi}${timeKpi}
+    </div>
+    <div class="cls">${clsChips}</div>
+    ${ph.length ? `<div class="phase" style="margin-top:16px">${ph.map(x => `<div><span>${x.p}</span><span class="t"><i style="width:${x.acc}%"></i></span><span class="mute">${x.acc.toFixed(0)}%</span></div>`).join('')}</div>` : ''}
+    ${weakest ? `<p class="small mute" style="margin:12px 0 0">Focus area: your <b style="color:var(--ink)">${weakest.p.toLowerCase()}</b> was your weakest phase in this game.</p>` : ''}
+  </section>`;
+
+  h += `<h3 id="s-lessons">Your ${lessons.length === 1 ? 'key lesson' : lessons.length + ' key lessons'}</h3>`;
+  if (!lessons.length) h += '<section class="card"><b>Clean game.</b> No significant swings from your side. Review the full game below for finer points.</section>';
+  lessons.forEach((les, k) => {
+    h += `<section class="card lesson" id="les${k}"><div><div class="bd"></div><div class="small mute" style="margin-top:6px">Move ${moveNo(les.d.i)}, ${side === 'w' ? 'White' : 'Black'} to play</div></div>
+      <div><span class="tag">Lesson ${k + 1} · ${les.tag}</span><h2>${les.title}</h2>
+      <div class="drill" id="dr${k}">🧩 <b>Try it first:</b> find a better move than <b>${les.d.m.san}</b>. Click a piece, then its destination.</div>
+      <div class="actions"><button class="sec" id="rev${k}">Show answer</button><button class="sec" id="cp${k}">📋 Copy AI coach prompt</button></div>
+      <div class="small mute hidden" id="cpn${k}" style="margin-top:6px">Copied. Paste it into a free chat at claude.ai or chatgpt.com.</div>
+      <div class="ex hidden" id="ex${k}">${les.html}<div class="habit"><b>Habit to build:</b> ${les.habit}</div>${teachHtml(les.tag)}</div></div></section>`;
+  });
+
+  h += `<h3 id="s-review">Full game review</h3><section class="card"><svg id="graph" viewBox="0 0 600 90" preserveAspectRatio="none"></svg>
+    <div class="viewer" style="margin-top:14px"><div><div class="bwrap"><div class="evbar"><i id="evfill"></i></div><div style="flex:1"><div id="vb"></div></div></div>
+      <div class="nav"><button class="sec" data-n="start">⏮</button><button class="sec" data-n="prev">◀</button><button class="sec" data-n="next">▶</button><button class="sec" data-n="end">⏭</button></div></div>
+      <div><div class="info" id="vinfo"></div><div class="moves" id="mlist" style="margin-top:10px"></div></div></div></section>`;
+  $('#out').innerHTML = h;
+
+  lessons.forEach((les, k) => mountDrill(k, les, ctx));
+  lessons.forEach((les, k) => { $(`#cp${k}`).onclick = async () => {
+    try { await navigator.clipboard.writeText(les.prompt); } catch (e) { const t = document.createElement('textarea'); t.value = les.prompt; document.body.appendChild(t); t.select(); document.execCommand('copy'); t.remove(); }
+    $(`#cpn${k}`).classList.remove('hidden'); }; });
+  mountViewer(ctx, lessons);
+  $('#out').scrollIntoView({ behavior:'smooth' });
+}
+
+/* =============================== drill =============================== */
+function mountDrill(k, les, ctx) {
+  const flip = ctx.side === 'b', board = new Board($(`#les${k} .bd`)), box = $(`#dr${k}`);
+  const g = new Chess(les.fb), legal = g.moves({ verbose:true }), d = les.d;
+  let sel = null, done = false;
+  const paint = (fen = les.fb, o = {}) => board.render(fen, { flip, ...o });
+  const reveal = () => {
+    done = true; $(`#ex${k}`).classList.remove('hidden'); $(`#rev${k}`).classList.add('hidden');
+    paint(les.fb, { arrows:[{ from:d.m.from, to:d.m.to, color:'#e5534b' }, ...(les.bestUci && les.bestUci !== d.m.uci ? [{ from:les.bestUci.slice(0, 2), to:les.bestUci.slice(2, 4), color:'#3fb950' }] : [])] });
+  };
+  const click = sq => {
+    if (done) return;
+    const own = legal.some(m => m.from === sq);
+    if (sel) {
+      const mv = legal.find(m => m.from === sel && m.to === sq && (!m.promotion || m.promotion === 'q'));
+      if (mv) {
+        const u = uciOf(mv);
+        if (d.accept.includes(u)) {
+          box.className = 'drill ok'; box.innerHTML = `✅ <b>${mv.san}</b> — that's it. In the game you played <b>${d.m.san}</b>.`;
+          const g2 = new Chess(les.fb); g2.move(mv); done = true; paint(g2.fen(), { last:[mv.from, mv.to] });
+          $(`#ex${k}`).classList.remove('hidden'); $(`#rev${k}`).classList.add('hidden'); return;
+        }
+        box.className = 'drill no'; box.innerHTML = u === d.m.uci ? `❌ <b>${mv.san}</b> is what you played in the game. Look for something better.` : `❌ <b>${mv.san}</b> isn't the best here. Try again, or press "Show answer".`;
+        sel = null; paint(les.fb); board.root.querySelectorAll('.sq').forEach(e => e.onclick = () => click(e.dataset.sq)); return;
+      }
+    }
+    if (own) { sel = sq; paint(les.fb, { sel, targets:legal.filter(m => m.from === sq).map(m => m.to) }); }
+    else { sel = null; paint(les.fb); }
+    board.root.classList.add('click'); board.root.querySelectorAll('.sq').forEach(e => e.onclick = () => click(e.dataset.sq));
+  };
+  paint(); board.root.classList.add('click'); board.root.querySelectorAll('.sq').forEach(e => e.onclick = () => click(e.dataset.sq));
+  $(`#rev${k}`).onclick = reveal;
+}
+
+/* =============================== viewer =============================== */
+function mountViewer(ctx, lessons) {
+  const { fens, moves, data, L, side } = ctx, n = moves.length, flip = side === 'b', board = new Board($('#vb'));
+  let idx = 0;
+  const wWin = j => { const cp = (fens[j].split(' ')[1] === 'w' ? 1 : -1) * L[j][0].cp; return winPct(cp); };
+  const wCp = j => (fens[j].split(' ')[1] === 'w' ? 1 : -1) * L[j][0].cp;
+
+  /* graph */
+  const pts = fens.map((_, j) => [j / n * 600, 90 - wWin(j) * .9]);
+  let path = 'M0,45 ' + pts.map(p => `L${p[0].toFixed(1)},${p[1].toFixed(1)}`).join(' ');
+  $('#graph').innerHTML = `<rect width="600" height="90" fill="none"/><path d="${path} L600,90 L0,90 Z" fill="rgba(240,240,240,.88)"/><line x1="0" y1="45" x2="600" y2="45" stroke="#888" stroke-width=".6" stroke-dasharray="3 3"/>`
+    + lessons.map(l => `<circle cx="${((l.d.i + 1) / n * 600).toFixed(1)}" cy="${pts[l.d.i + 1][1].toFixed(1)}" r="4.5" fill="#f85149" stroke="#111" stroke-width="1.2"/>`).join('')
+    + '<line id="gcur" y1="0" y2="90" stroke="#58a6ff" stroke-width="1.5"/>';
+  $('#graph').onclick = e => { const r = e.currentTarget.getBoundingClientRect(); go(Math.round((e.clientX - r.left) / r.width * n)); };
+
+  /* move list */
+  let ml = '';
+  for (let j = 0; j < n; j += 2) {
+    ml += `<div class="n">${j / 2 + 1}.</div>`;
+    for (const q of [j, j + 1]) {
+      if (q >= n) { ml += '<div></div>'; continue; }
+      const d = data[q];
+      ml += `<button data-i="${q + 1}" class="c-${d.cls}">${moves[q].san}${CLS[d.cls].sym && d.cls !== 'best' ? ' ' + CLS[d.cls].sym : ''}</button>`;
+    }
+  }
+  $('#mlist').innerHTML = ml;
+  $('#mlist').querySelectorAll('button').forEach(b => b.onclick = () => go(+b.dataset.i));
+
+  function go(j) {
+    idx = clamp(j, 0, n);
+    const arrows = [], last = [];
+    let info = '';
+    if (idx > 0) {
+      const d = data[idx - 1], m = d.m; last.push(m.from, m.to);
+      const bestUci = L[idx - 1][0].pv[0], bm = findMove(fens[idx - 1], bestUci);
+      arrows.push({ from:m.from, to:m.to, color:d.cls === 'best' || d.cls === 'excellent' || d.cls === 'good' ? '#3fb950' : '#e5534b' });
+      if (bestUci && bestUci !== m.uci) arrows.push({ from:bestUci.slice(0, 2), to:bestUci.slice(2, 4), color:'#58a6ff' });
+      const who = d.color === 'w' ? 'White' : 'Black';
+      info = `<div><b>${moveTag(idx - 1, m.san)}</b> <span class="c-${d.cls}">${CLS[d.cls].label}</span> <span class="mute small">· ${who}${d.time != null ? ` · ${d.time.toFixed(0)}s` : ''}</span></div>`;
+      if (d.cls === 'best') info += `<div class="small mute">The engine's top choice.</div>`;
+      else if (bm) info += `<div class="small" style="margin-top:4px">Best: <b>${bm.san}</b> <span class="line">${sanLine(fens[idx - 1], L[idx - 1][0].pv, 5)}</span></div>`
+        + (d.loss >= 5 ? `<div class="small mute" style="margin-top:4px">Winning chances ${Math.round(winPct(d.before))}% → ${Math.round(winPct(d.after))}% for ${who}.</div>` : '');
+    } else info = '<div class="mute">Starting position. Use ◀ ▶ or the arrow keys to step through the game. Red arrow = your move was weak, blue = engine\'s suggestion.</div>';
+    const cp = wCp(idx), mate = Math.abs(cp) >= 9000 ? (cp > 0 ? 1 : -1) * (10000 - Math.abs(cp)) : null;
+    info += `<div class="small mute" style="margin-top:6px">Evaluation: <b style="color:var(--ink)">${fmtEval(cp, mate)}</b> (White's view)</div>`;
+    $('#vinfo').innerHTML = info;
+    board.render(fens[idx], { flip, last, arrows });
+    const ww = wWin(idx); $('#evfill').style.cssText = flip ? `top:0;height:${ww}%` : `bottom:0;height:${ww}%`;
+    $('#evfill').parentElement.style.background = '#222';
+    $('#gcur').setAttribute('x1', idx / n * 600); $('#gcur').setAttribute('x2', idx / n * 600);
+    $('#mlist').querySelectorAll('button').forEach(b => b.classList.toggle('cur', +b.dataset.i === idx));
+    const cur = $('#mlist button.cur'); if (cur) cur.scrollIntoView({ block:'nearest' });
+  }
+  document.querySelectorAll('.nav button').forEach(b => b.onclick = () => go({ start:0, prev:idx - 1, next:idx + 1, end:n }[b.dataset.n]));
+  document.onkeydown = e => { if (/input|textarea|select/i.test(e.target.tagName)) return; if (e.key === 'ArrowLeft') go(idx - 1); if (e.key === 'ArrowRight') go(idx + 1); };
+  window.__viewerGo = go;
+  go(lessons.length ? lessons[0].d.i + 1 : 0);
+}
+
+/* =============================== progress tracker =============================== */
+const STORE = 'coach.v1';
+const loadStore = () => { try { return JSON.parse(localStorage.getItem(STORE)) || []; } catch (e) { return []; } };
+const saveStore = a => { try { localStorage.setItem(STORE, JSON.stringify(a)); } catch (e) {} };
+
+function openingName(hdr) {
+  const slug = hdr.Opening ? hdr.Opening.split(':')[0] : (hdr.ECOUrl || '').split('/').pop().replace(/-/g, ' ');
+  const out = [];
+  for (const w of slug.split(/\s+/).filter(Boolean)) {
+    if (/\d/.test(w)) break; out.push(w);
+    if (/^(Defense|Defence|Game|Opening|Gambit|Attack|System|Countergambit)$/.test(w) || out.length >= 4) break;
+  }
+  return out.length ? out.join(' ') : 'Unknown opening';
+}
+
+/* ---- saved analysis cache (so opening a game later is instant) ---- */
+const CACHE = 'coach.cache.v1';
+const readAll = () => { try { return JSON.parse(localStorage.getItem(CACHE)) || {}; } catch (e) { return {}; } };
+function writeCache(id, e) {
+  const all = readAll();
+  all[id] = { ts:Date.now(), pgn:e.pgn, side:e.side, depth:e.depth, L:e.L.map(pos => pos.map(l => [l.cp, l.mate, l.pv.slice(0, 6).join(' ')])) };
+  const ids = Object.keys(all).sort((x, y) => all[x].ts - all[y].ts);
+  while (ids.length > 120) delete all[ids.shift()];
+  for (;;) { try { localStorage.setItem(CACHE, JSON.stringify(all)); return; } catch (err) { if (ids.length <= 1) return; delete all[ids.shift()]; } }
+}
+function readCache(id, depth) {
+  const e = readAll()[id];
+  if (!e || e.depth < depth) return null;
+  return e.L.map(pos => pos.map(l => ({ cp:l[0], mate:l[1], pv:l[2] ? l[2].split(' ') : [] })));
+}
+const pgnId = (pgn, fallback) => ((pgn || '').match(/\[Link "([^"]+)"\]/) || [])[1] || fallback;
+function markCached() {
+  const c = readAll();
+  document.querySelectorAll('#games button[data-id]').forEach(b => b.classList.toggle('done', !!c[b.dataset.id]));
+  const bb = $('#batch');
+  if (bb && loadedGames.length) {
+    const left = loadedGames.filter(g => !c[g.id]).length;
+    bb.textContent = left ? `Analyze ${left} new game${left > 1 ? 's' : ''} and build My progress` : 'All these games are analyzed ✓';
+    bb.disabled = bgBusy || !left;
+  }
+}
+async function openGame(id, ply) {
+  const e = readAll()[id];
+  if (!e) { $('#msg').textContent = 'That analysis is no longer saved. Run "Analyze all" again.'; return; }
+  if (busy) return;
+  $('#pgn').value = e.pgn; $('#side').value = e.side; $('#out').innerHTML = '';
+  try {
+    const ctx = await analyzePGN(e.pgn, e.side, e.depth);
+    $('#msg').textContent = ''; render(ctx);
+    if (ply != null && window.__viewerGo) { window.__viewerGo(ply + 1); $('#s-review').scrollIntoView({ behavior:'smooth' }); }
+  } catch (err) { $('#msg').innerHTML = `<span class="err">${esc(err.message)}</span>`; }
+}
+
+/* ---- per-game statistics ---- */
+function gameStats(ctx) {
+  const { side, data, L, fens, hdr } = ctx, mine = data.filter(d => d.color === side), cl = x => clamp(x, -1000, 1000);
+  const used = mine.filter(d => Math.abs(cl(d.before)) <= 800);
+  const acpl = used.length ? used.reduce((s, d) => s + Math.min(600, Math.max(0, cl(d.before) - cl(d.after))), 0) / used.length : null;
+  const elo = acpl == null ? null : Math.round(clamp(3100 * Math.exp(-0.01 * acpl), 400, 2900) / 10) * 10;
+  let minWin = 100, maxWin = 0;
+  fens.forEach((f, j) => { const w = winPct((f.split(' ')[1] === side ? 1 : -1) * L[j][0].cp); minWin = Math.min(minWin, w); maxWin = Math.max(maxWin, w); });
+  const myElo = +(side === 'w' ? hdr.WhiteElo : hdr.BlackElo) || null, oppElo = +(side === 'w' ? hdr.BlackElo : hdr.WhiteElo) || null;
+  return { acpl, elo, minWin, maxWin, only:mine.filter(d => d.only).length, myElo, oppElo };
+}
+
+function saveGame(ctx) {
+  const { hdr, side, data } = ctx, mine = data.filter(d => d.color === side);
+  const bad = mine.filter(d => d.loss >= 10), phaseAcc = {};
+  mine.forEach(d => { const p = phaseAcc[d.phase] || (phaseAcc[d.phase] = [0, 0]); p[0] += d.acc; p[1]++; });
+  const timedBad = bad.filter(d => d.time != null), gs = gameStats(ctx);
+  const res = hdr.Result === '1/2-1/2' ? 'D' : hdr.Result === '1-0' ? (side === 'w' ? 'W' : 'L') : hdr.Result === '0-1' ? (side === 'b' ? 'W' : 'L') : null;
+  const lessons = bad.map(d => ({ d, l:buildLesson(d, ctx) }));
+  const src = lessons.length ? lessons : mine.filter(d => d.loss >= 5).sort((a, b) => b.loss - a.loss).slice(0, 2).map(d => ({ d, l:buildLesson(d, ctx) }));
+  const rec = {
+    id:ctx.id, ts:Date.now(), date:hdr.Date || '', color:side, opp:side === 'w' ? hdr.Black : hdr.White, res, opening:openingName(hdr),
+    acc:mine.reduce((s, d) => s + d.acc, 0) / mine.length, phaseAcc, firstErr:bad.length ? bad[0].i : null,
+    themes:lessons.map(x => ({ t:x.l.tag, h:x.l.habit })),
+    moments:[...src].sort((a, b) => b.d.loss - a.d.loss).slice(0, 3).map(x => ({ i:x.d.i, san:x.d.m.san, cls:x.d.cls, tag:x.l.tag, loss:Math.round(x.d.loss), from:Math.round(winPct(x.d.before)), to:Math.round(winPct(x.d.after)), best:x.l.bestSan })),
+    counts:{ blunder:mine.filter(d => d.cls === 'blunder').length, mistake:mine.filter(d => d.cls === 'mistake').length, inacc:mine.filter(d => d.cls === 'inaccuracy').length },
+    elo:gs.elo, acpl:gs.acpl, minWin:gs.minWin, maxWin:gs.maxWin, only:gs.only, myElo:gs.myElo, oppElo:gs.oppElo, nMine:mine.length, badN:bad.length,
+    timedBad:timedBad.length, rushed:timedBad.filter(d => d.time <= 3).length
+  };
+  const all = loadStore().filter(r => r.id !== rec.id); all.push(rec);
+  saveStore(all.slice(-200));
+  markCached();
+}
+
+const fmtDate = d => { const m = (d || '').match(/(\d+)\.(\d+)\.(\d+)/); return m ? new Date(+m[1], +m[2] - 1, +m[3]).toLocaleDateString(undefined, { month:'short', day:'numeric' }) : 'Unknown date'; };
+
+function sparkline(vals, color, w = 130, h = 36) {
+  if (vals.length < 2) return '';
+  const lo = Math.min(...vals), span = Math.max(Math.max(...vals) - lo, 1e-6);
+  const pts = vals.map((v, i) => [i / (vals.length - 1) * (w - 8) + 4, h - 5 - (v - lo) / span * (h - 10)]);
+  const last = pts[pts.length - 1];
+  return `<svg class="mini" viewBox="0 0 ${w} ${h}" preserveAspectRatio="none" aria-hidden="true"><polyline vector-effect="non-scaling-stroke" points="${pts.map(p => p[0].toFixed(1) + ',' + p[1].toFixed(1)).join(' ')}" fill="none" stroke="${color}" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/></svg>`;
+}
+const meanOf = (a, f) => a.length ? a.reduce((s, r) => s + f(r), 0) / a.length : null;
+
+function dashboardHtml(g) {
+  const n = g.length;
+  const withElo = g.filter(r => r.elo != null), est = withElo.length ? Math.round(meanOf(withElo.slice(-10), r => r.elo) / 10) * 10 : null;
+  const rated = g.filter(r => r.myElo), real = rated.length ? Math.round(meanOf(rated.slice(-10), r => r.myElo)) : null;
+  const acc = meanOf(g, r => r.acc), recent = g.slice(-5), earlier = g.slice(-10, -5);
+  const trend = earlier.length ? meanOf(recent, r => r.acc) - meanOf(earlier, r => r.acc) : null;
+  const rec = { W:0, D:0, L:0 }; g.forEach(r => { if (r.res) rec[r.res]++; });
+  const played = rec.W + rec.D + rec.L, pct = k => played ? rec[k] / played * 100 : 0;
+  const diff = est && real ? est - real : null;
+
+  const hero = `<div class="dash">
+    <div class="big"><div class="bl">Estimated strength</div><div class="bv">${est ? '~' + est : '–'}</div>
+      <div class="bs">${real ? `Your rating ~${real}${Math.abs(diff) >= 60 ? ` · you play about ${Math.abs(diff)} ${diff > 0 ? 'above' : 'below'} it` : ' · in line with it'}` : 'Based on your accuracy'}</div>${sparkline(withElo.map(r => r.elo), 'var(--blue)')}</div>
+    <div class="big"><div class="bl">Average accuracy</div><div class="bv">${acc.toFixed(0)}%</div>
+      <div class="bs">${trend != null ? `<span class="chip ${trend >= 0 ? 'up' : 'down'}">${trend >= 0 ? '▲' : '▼'} ${Math.abs(trend).toFixed(1)}</span> vs earlier games` : `Across ${n} game${n > 1 ? 's' : ''}`}</div>${sparkline(g.map(r => r.acc), 'var(--accent)')}</div>
+    <div class="big"><div class="bl">Results</div><div class="bv">${rec.W}<span class="dim"> – </span>${rec.D}<span class="dim"> – </span>${rec.L}</div>
+      <div class="rbar"><i class="w" style="width:${pct('W')}%"></i><i class="d" style="width:${pct('D')}%"></i><i class="l" style="width:${pct('L')}%"></i></div>
+      <div class="bs">Win · draw · loss · ${played ? pct('W').toFixed(0) : 0}% win rate</div></div></div>`;
+
+  /* habits */
+  const blown = g.filter(r => r.maxWin != null && r.maxWin >= 80 && r.res !== 'W').length, comebacks = g.filter(r => r.minWin != null && r.minWin <= 20 && r.res === 'W').length;
+  const only = g.reduce((s, r) => s + (r.only || 0), 0), moves = g.reduce((s, r) => s + (r.nMine || 0), 0), errs = g.reduce((s, r) => s + (r.badN || 0), 0);
+  const tb = g.reduce((s, r) => s + (r.timedBad || 0), 0), rb = g.reduce((s, r) => s + (r.rushed || 0), 0);
+  const row = (label, val, hint) => `<div class="lrow" title="${esc(hint || '')}"><span>${label}</span><b>${val}</b></div>`;
+  const habits = `<div class="panel"><h4>Your habits</h4>
+    ${moves ? row('Big mistakes per 100 moves', (errs / moves * 100).toFixed(1), 'Mistakes and blunders combined') : ''}
+    ${row('Winning positions not converted', `${blown} of ${n}`, 'Games where you reached 80%+ winning chances but did not win')}
+    ${row('Comebacks', `${comebacks} of ${n}`, 'Wins after dropping to 20% or lower')}
+    ${row('Only-moves found', only, 'Moves that were the single way to keep or win the advantage')}
+    ${tb ? row('Big mistakes played in 3s or less', `${rb} of ${tb}`, 'Rushed moves') : ''}</div>`;
+
+  /* accuracy breakdown */
+  const P = {}; g.forEach(r => Object.entries(r.phaseAcc || {}).forEach(([k, v]) => { const p = P[k] || (P[k] = [0, 0]); p[0] += v[0]; p[1] += v[1]; }));
+  const phase = ['Opening', 'Middlegame', 'Endgame'].filter(k => P[k]).map(k => [k, P[k][0] / P[k][1], P[k][1]]);
+  const weakest = phase.filter(x => x[2] >= 6).sort((a, b) => a[1] - b[1])[0];
+  const bars = list => list.map(([k, v]) => `<div class="brow"><span>${k}${weakest && weakest[0] === k ? ' <em class="warn">weakest</em>' : ''}</span><span class="track"><i style="width:${clamp(v, 0, 100)}%"></i></span><b>${v.toFixed(0)}%</b></div>`).join('');
+  const cols = [['As White', meanOf(g.filter(r => r.color === 'w'), r => r.acc)], ['As Black', meanOf(g.filter(r => r.color === 'b'), r => r.acc)]].filter(x => x[1] != null);
+  const outc = [['In wins', meanOf(g.filter(r => r.res === 'W'), r => r.acc)], ['In losses', meanOf(g.filter(r => r.res === 'L'), r => r.acc)]].filter(x => x[1] != null);
+  const breakdown = `<div class="panel"><h4>Accuracy breakdown</h4>${bars(phase)}${cols.length ? '<div class="gap"></div>' + bars(cols) : ''}${outc.length ? '<div class="gap"></div>' + bars(outc) : ''}</div>`;
+
+  return `<h3 id="s-stats">Your dashboard · ${n} game${n > 1 ? 's' : ''}</h3>${hero}<div class="cols2">${habits}${breakdown}</div>
+    <p class="small mute" style="margin:10px 2px 0">Strength is a rough estimate (about ±200) from average centipawn loss, so a few games can swing it. It is not an official rating.</p>`;
+}
+
+function momentBtn(id, m, canOpen) {
+  return `<button class="moment" data-open="${esc(id)}" data-ply="${m.i}"${canOpen ? '' : ' disabled'}>
+    <span><b class="c-${m.cls}">${moveTag(m.i, esc(m.san))} ${CLS[m.cls].sym}</b> · ${esc(m.tag)}</span>
+    <span class="mute small">winning chances ${m.from}% → ${m.to}%${m.best && m.best !== '?' && m.best !== m.san ? ` · better: <b style="color:var(--ink)">${esc(m.best)}</b>` : ''}</span>
+    <span class="go">${canOpen ? 'Watch ▶' : ''}</span></button>`;
+}
+
+function trainingHtml(g) {
+  const n = g.length, cache = readAll(), T = {};
+  g.forEach(r => { const seen = new Set(); (r.themes || []).forEach(x => { const t = T[x.t] || (T[x.t] = { n:0, games:0 }); t.n++; if (!seen.has(x.t)) { seen.add(x.t); t.games++; } }); });
+  const top = Object.entries(T).sort((a, b) => b[1].games - a[1].games || b[1].n - a[1].n).slice(0, 3);
+  if (!top.length) return `<h3 id="s-progress">What to work on</h3><section class="card"><b>No recurring mistakes yet.</b> <span class="mute">Analyze more games and your most common patterns will show up here with a plan to fix them.</span></section>`;
+  const newest = [...g].reverse();
+  return `<h3 id="s-progress">What to work on</h3>` + top.map(([tag, v], i) => {
+    const ex = []; newest.forEach(r => (r.moments || []).forEach(m => { if (m.tag === tag && ex.length < 3) ex.push([r, m]); }));
+    return `<section class="card train"><div class="rank">${i + 1}</div><div style="min-width:0"><div class="tag">${esc(tag)}</div>
+      <div class="small mute" style="margin-bottom:6px">${v.n} time${v.n > 1 ? 's' : ''} in ${v.games} of ${n} games</div>${teachHtml(tag)}
+      ${ex.length ? `<div class="sub">From your own games</div><div class="moments">${ex.map(([r, m]) => momentBtn(r.id, m, !!cache[r.id])).join('')}</div>` : ''}</div></section>`;
+  }).join('');
+}
+
+function gamesHtml(g) {
+  const cache = readAll();
+  const newest = [...g].sort((a, b) => (b.date || '').localeCompare(a.date || '') || b.ts - a.ts);
+  const eligible = r => (r.nMine || 0) >= 15;
+  const days = {}; g.forEach(r => (days[r.date || '?'] = days[r.date || '?'] || []).push(r));
+  const bestOf = day => [...days[day]].sort((a, b) => (eligible(b) - eligible(a)) || b.acc - a.acc)[0];
+  const latestDay = newest[0] && (newest[0].date || '?'), hero = latestDay ? bestOf(latestDay) : null;
+  const badge = new Set(Object.keys(days).filter(d => days[d].length >= 2).map(d => bestOf(d).id));
+  const pill = r => r.res === 'W' ? '<span class="pill win">Won</span>' : r.res === 'L' ? '<span class="pill loss">Lost</span>' : r.res === 'D' ? '<span class="pill draw">Draw</span>' : '';
+  const card = r => {
+    const c = r.counts || {}, canOpen = !!cache[r.id];
+    const moments = r.moments ? (r.moments.length ? r.moments.map(m => momentBtn(r.id, m, canOpen)).join('') : '<div class="small" style="color:var(--best)">✓ Clean game: no big mistakes.</div>')
+      : '<div class="small mute">Run “Analyze” again to add key moments for this game.</div>';
+    return `<div class="gcard"><div class="ghead">${pill(r)}<b>${r.color === 'w' ? '⚪' : '⚫'} vs ${esc(r.opp || '?')}</b>${badge.has(r.id) ? '<span class="trophy">🏆 best of day</span>' : ''}
+      <span class="mute small">${esc(r.opening)} · ${fmtDate(r.date)}</span>
+      <span class="gstat">${r.acc.toFixed(0)}%${r.elo ? ` · ~${r.elo}` : ''}${c.blunder != null ? ` · ${c.blunder}?? ${c.mistake}?` : ''}</span>
+      ${canOpen ? `<button class="sec" data-open="${esc(r.id)}" data-ply="">Open review</button>` : ''}</div>
+      <div class="moments">${moments}</div></div>`;
+  };
+  const heroHtml = hero ? `<div class="hero-card"><div class="small mute">🏆 Best game of ${fmtDate(latestDay === '?' ? '' : latestDay)}</div>
+      <div style="font-size:18px;font-weight:700;margin:2px 0">${pill(hero)} ${hero.color === 'w' ? '⚪' : '⚫'} vs ${esc(hero.opp || '?')} · ${hero.acc.toFixed(0)}% accuracy${hero.elo ? ` · played like ~${hero.elo}` : ''}</div>
+      <div class="small mute">${esc(hero.opening)}${hero.only ? ` · found ${hero.only} only-move${hero.only > 1 ? 's' : ''}` : ''}${hero.myElo && hero.oppElo ? ` · rated ${hero.myElo} vs ${hero.oppElo}` : ''}</div>
+      ${cache[hero.id] ? `<div class="actions"><button data-open="${esc(hero.id)}" data-ply="">Watch it</button></div>` : ''}</div>` : '';
+  return `<h3 id="s-games">Your games</h3>${heroHtml}<div style="${hero ? 'margin-top:12px' : ''}">${newest.map(card).join('')}</div>`;
+}
+
+function openingsHtml(g) {
+  const O = {};
+  g.forEach(r => { const k = r.opening + '|' + r.color, o = O[k] || (O[k] = { name:r.opening, color:r.color, n:0, W:0, D:0, L:0, acc:0, fe:[] }); o.n++; if (r.res) o[r.res]++; o.acc += r.acc; if (r.firstErr != null) o.fe.push(moveNo(r.firstErr)); });
+  const ops = Object.values(O).sort((a, b) => b.n - a.n || a.acc / a.n - b.acc / b.n).slice(0, 8);
+  const weakOp = ops.filter(o => o.n >= 2).sort((a, b) => a.acc / a.n - b.acc / b.n)[0];
+  const rows = ops.map(o => `<tr${o === weakOp ? ' class="weak"' : ''}><td>${o.color === 'w' ? '⚪' : '⚫'} ${esc(o.name)}${o === weakOp ? ' <em class="warn">weakest</em>' : ''}</td><td>${o.n}</td><td>${o.W}-${o.D}-${o.L}</td><td>${(o.acc / o.n).toFixed(0)}%</td><td>${o.fe.length ? 'move ' + Math.round(o.fe.reduce((s, x) => s + x, 0) / o.fe.length) : '–'}</td></tr>`).join('');
+  return { ops, weakOp, html:`<h3 id="s-openings">Opening report</h3><section class="card"><table class="optable"><thead><tr><th>Opening</th><th>Games</th><th>W-D-L</th><th>Accuracy</th><th>You typically go wrong</th></tr></thead><tbody>${rows}</tbody></table>
+    <p class="small mute" style="margin:10px 0 0">Opening names come from chess.com's PGN. "Go wrong" is the average move number of your first mistake in that opening.${weakOp ? ` Study <b style="color:var(--ink)">${esc(weakOp.name)}</b> as ${weakOp.color === 'w' ? 'White' : 'Black'} first.` : ''}</p></section>` };
+}
+
+function copyText(t) {
+  return navigator.clipboard.writeText(t).catch(() => { const a = document.createElement('textarea'); a.value = t; document.body.appendChild(a); a.select(); document.execCommand('copy'); a.remove(); });
+}
+
+function renderProgress() {
+  const el = $('#prog'), g = loadStore().sort((a, b) => (a.date || '').localeCompare(b.date || '') || a.ts - b.ts);
+  if (!g.length) { el.innerHTML = ''; return; }
+  const n = g.length, op = openingsHtml(g);
+  const T = {}; g.forEach(r => { const seen = new Set(); (r.themes || []).forEach(x => { const t = T[x.t] || (T[x.t] = { games:0 }); if (!seen.has(x.t)) { seen.add(x.t); t.games++; } }); });
+  const themes = Object.entries(T).sort((a, b) => b[1].games - a[1].games).slice(0, 5);
+  const rec = { W:0, D:0, L:0 }; g.forEach(r => { if (r.res) rec[r.res]++; });
+  const withElo = g.filter(r => r.elo != null);
+  window.__progressPrompt = `You are a precise, encouraging chess coach. Below are statistics computed by Stockfish from my last ${n} games. Use ONLY these numbers; do not invent games or moves.
+
+Games analyzed: ${n}. Average accuracy ${meanOf(g, r => r.acc).toFixed(0)}%. Record ${rec.W}-${rec.D}-${rec.L}.${withElo.length ? ` Estimated strength about ${Math.round(meanOf(withElo.slice(-10), r => r.elo) / 10) * 10}.` : ''}
+Recurring mistake patterns (games affected): ${themes.map(([k, v]) => `${k} ${v.games}/${n}`).join('; ') || 'none'}.
+Openings: ${op.ops.map(o => `${o.name} as ${o.color === 'w' ? 'White' : 'Black'} (${o.n} games, ${(o.acc / o.n).toFixed(0)}% accuracy)`).join('; ')}.
+
+Give me: (1) my 2 biggest weaknesses and why they matter, (2) a 2-week training plan with specific daily exercises (free ones: chess.com puzzles, lichess practice, etc.), (3) one opening suggestion to simplify my repertoire based on the data.`;
+  el.innerHTML = dashboardHtml(g) + trainingHtml(g) + gamesHtml(g) + op.html + `
+  <div class="actions"><button class="sec" id="pcopy">📋 Copy AI coach prompt for my stats</button><button class="sec" id="pclear">Clear saved progress</button></div>
+  <div class="small mute hidden" id="pnote" style="margin-top:6px">Copied. Paste it into a free chat at claude.ai or chatgpt.com. Your history is saved only in this browser.</div>`;
+  el.querySelectorAll('[data-open]').forEach(b => b.onclick = () => openGame(b.dataset.open, b.dataset.ply === '' ? null : +b.dataset.ply));
+  $('#pcopy').onclick = async () => { await copyText(window.__progressPrompt); $('#pnote').classList.remove('hidden'); };
+  $('#pclear').onclick = () => { if (confirm('Delete all saved game history from this browser?')) { saveStore([]); renderProgress(); } };
+}
+renderProgress();
+
+/* =============================== UI glue =============================== */
+const TIPS = [
+  'Tip: before each move, ask "what can my opponent capture or check after this?"',
+  'Tip: most games below 1500 are decided by one or two blunders, not by opening theory.',
+  'Tip: spending 5 extra seconds on forcing moves (checks, captures, threats) pays off the most.',
+  'Tip: keep this tab in front. Browsers slow down background tabs.',
+  'Tip: after a loss, review before you queue the next game. That is where rating is gained.'
+];
+let tipTimer = null;
+const _setBusy = setBusy;
+setBusy = function (b) {
+  _setBusy(b);
+  clearInterval(tipTimer);
+  if (b) { let k = Math.floor(Math.random() * TIPS.length); $('#tip').textContent = TIPS[k]; tipTimer = setInterval(() => { k = (k + 1) % TIPS.length; $('#tip').textContent = TIPS[k]; }, 7000); }
+  else $('#tip').textContent = '';
+};
+function syncJump() {
+  const links = [...document.querySelectorAll('#jump a')]; let any = false;
+  links.forEach(a => { const ok = !!document.querySelector(a.getAttribute('href')); a.classList.toggle('hidden', !ok); any = any || ok; });
+  $('#jump').classList.toggle('hidden', !any);
+}
+const _render = render, _renderProgress = renderProgress;
+render = function (ctx) { _render(ctx); syncJump(); };
+renderProgress = function () { _renderProgress(); syncJump(); };
+
+$('#stop').onclick = () => { cancelBatch = true; $('#stop').textContent = 'Stopping…'; BG.msg('Stopping after this game…'); };
+/* tabs */
+document.querySelectorAll('.tab').forEach(t => t.onclick = () => {
+  document.querySelectorAll('.tab').forEach(x => x.classList.toggle('on', x === t));
+  $('#tab-user').classList.toggle('hidden', t.dataset.tab !== 'user'); $('#tab-paste').classList.toggle('hidden', t.dataset.tab !== 'paste');
+});
+/* remembered username + Enter key */
+try { const u = localStorage.getItem('coach.user'); if (u) $('#user').value = u; } catch (e) {}
+$('#user').addEventListener('keydown', e => { if (e.key === 'Enter') $('#fetch').click(); });
+$('#fetch').addEventListener('click', () => { try { localStorage.setItem('coach.user', $('#user').value.trim()); } catch (e) {} });
+/* theme */
+(function () {
+  let t = null; try { t = localStorage.getItem('coach.theme'); } catch (e) {}
+  if (!t) t = matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark';
+  document.documentElement.dataset.theme = t;
+  $('#theme').onclick = () => { t = t === 'light' ? 'dark' : 'light'; document.documentElement.dataset.theme = t; try { localStorage.setItem('coach.theme', t); } catch (e) {} };
+})();
+/* share */
+$('#sharebtn').onclick = async () => {
+  const url = location.href.split('#')[0];
+  try { if (navigator.share) { await navigator.share({ title:'Chess Coach', text:'Free chess game review with Stockfish', url }); return; } } catch (e) {}
+  await copyText(url); $('#sharenote').textContent = 'Link copied!';
+};
+syncJump();
+</script>
+</body>
+</html>
