@@ -3,202 +3,36 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Chess Coach</title>
-<style>
-  :root {
-    color-scheme:dark;
-    --bg:#101216; --panel:#181b21; --panel2:#20242c; --line:#2a2f39; --ink:#eef0f4; --mute:#97a0af;
-    --accent:#5fbf6b; --accent-ink:#08150b; --best:#3fb950; --good:#8bc34a; --inacc:#e3b341; --mistake:#f0883e; --blunder:#f85149; --blue:#58a6ff;
-    --habitbg:#14261a; --winbg:#17321c; --lossbg:#3a1b1a; --drawbg:#2c2c2c; --weakbg:#2a1d1b; --shadow:0 1px 2px rgba(0,0,0,.4);
-    --sqL:#ebecd0; --sqD:#739552;
-  }
-  :root[data-theme=light] {
-    color-scheme:light;
-    --bg:#f4f5f8; --panel:#ffffff; --panel2:#eef0f4; --line:#dde1e8; --ink:#1b2028; --mute:#5f6978;
-    --accent:#2f9e44; --accent-ink:#ffffff; --best:#2a9d3f; --good:#5a9a1f; --inacc:#b7881a; --mistake:#d9650f; --blunder:#d6342c; --blue:#1f6feb;
-    --habitbg:#e8f6ec; --winbg:#dcf3e1; --lossbg:#fde4e2; --drawbg:#e7e9ee; --weakbg:#fdeceb; --shadow:0 1px 3px rgba(20,30,50,.08);
-  }
-  * { box-sizing:border-box; }
-  body { margin:0; background:var(--bg); color:var(--ink); font:15px/1.6 ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif; -webkit-font-smoothing:antialiased; }
-  main { max-width:1000px; margin:0 auto; padding:28px 16px 80px; }
-  header { display:flex; align-items:baseline; gap:12px; margin-bottom:22px; }
-  h1 { margin:0; font-size:24px; letter-spacing:-.01em; }
-  header span { color:var(--mute); font-size:14px; }
-  h2 { margin:0 0 4px; font-size:19px; letter-spacing:-.01em; }
-  h3 { margin:26px 0 12px; font-size:12px; text-transform:uppercase; letter-spacing:.09em; color:var(--mute); font-weight:600; }
-  .card { background:var(--panel); border:1px solid var(--line); border-radius:14px; padding:20px; margin-bottom:14px; box-shadow:var(--shadow); }
-  label { display:block; font-size:12px; color:var(--mute); margin-bottom:5px; }
-  input, textarea, select { width:100%; background:var(--bg); color:var(--ink); border:1px solid var(--line); border-radius:8px; padding:9px 11px; font:inherit; }
-  input:focus, textarea:focus, select:focus { outline:none; border-color:var(--blue); }
-  textarea { min-height:90px; font:12px ui-monospace,Menlo,monospace; resize:vertical; }
-  button { background:var(--accent); color:var(--accent-ink); border:0; border-radius:8px; padding:9px 16px; font:inherit; font-weight:600; cursor:pointer; }
-  button.sec { background:var(--panel2); color:var(--ink); border:1px solid var(--line); font-weight:500; }
-  button:hover:not(:disabled) { filter:brightness(1.1); }
-  button:disabled { opacity:.45; cursor:default; }
-  .row { display:flex; gap:10px; align-items:flex-end; flex-wrap:wrap; }
-  .row > div { flex:1; min-width:150px; }
-  .games { margin-top:10px; display:grid; gap:6px; }
-  .games button { text-align:left; background:var(--bg); color:var(--ink); font-weight:400; border:1px solid var(--line); display:flex; gap:10px; align-items:center; }
-  .games button:hover { border-color:var(--accent); }
-  .pill { font-size:11px; padding:1px 8px; border-radius:99px; font-weight:600; }
-  .win { background:var(--winbg); color:var(--best); } .loss { background:var(--lossbg); color:var(--blunder); } .draw { background:var(--drawbg); color:var(--mute); }
-  .mute { color:var(--mute); } .small { font-size:13px; }
-  .bar { height:6px; background:var(--bg); border-radius:3px; overflow:hidden; margin-top:12px; }
-  .bar > i { display:block; height:100%; width:0; background:var(--accent); transition:width .15s; }
-
-  /* summary */
-  .sumgrid { display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:10px; }
-  .kpi { background:var(--bg); border:1px solid var(--line); border-radius:10px; padding:12px 14px; }
-  .kpi b { display:block; font-size:24px; letter-spacing:-.02em; line-height:1.2; }
-  .kpi span { font-size:12px; color:var(--mute); }
-  .cls { display:flex; flex-wrap:wrap; gap:8px; margin-top:12px; }
-  .cls span { font-size:12px; padding:3px 10px; border-radius:99px; background:var(--bg); border:1px solid var(--line); }
-  .dot { display:inline-block; width:8px; height:8px; border-radius:50%; margin-right:6px; }
-
-  /* board */
-  .board { position:relative; display:grid; grid-template-columns:repeat(8,1fr); aspect-ratio:1; width:100%; border-radius:6px; overflow:hidden; user-select:none; }
-  .sq { position:relative; background:var(--sqL); }
-  .sq.d { background:var(--sqD); }
-  .sq img { position:absolute; inset:0; width:100%; height:100%; pointer-events:none; }
-  .sq.last::before, .sq.sel::before { content:""; position:absolute; inset:0; background:rgba(255,220,60,.42); }
-  .sq.sel::before { background:rgba(80,160,255,.5); }
-  .sq.tgt::after { content:""; position:absolute; left:35%; top:35%; width:30%; height:30%; border-radius:50%; background:rgba(0,0,0,.22); }
-  .sq .co { position:absolute; font-size:10px; font-weight:700; opacity:.75; pointer-events:none; }
-  .sq .co.f { right:3px; bottom:1px; } .sq .co.r { left:3px; top:1px; }
-  .sq { color:var(--sqD); } .sq.d { color:var(--sqL); }
-  .board svg { position:absolute; inset:0; width:100%; height:100%; pointer-events:none; }
-  .board.click .sq { cursor:pointer; }
-
-  /* lessons */
-  .lesson { display:grid; grid-template-columns:minmax(0,340px) 1fr; gap:20px; }
-  @media (max-width:760px) { .lesson, .viewer { grid-template-columns:1fr !important; } }
-  .tag { display:inline-block; font-size:11px; font-weight:700; letter-spacing:.05em; text-transform:uppercase; color:var(--blunder); margin-bottom:6px; }
-  .lesson p { margin:8px 0; }
-  .habit { margin-top:12px; padding:10px 14px; background:var(--habitbg); border-left:3px solid var(--accent); border-radius:6px; }
-  .drill { margin-top:10px; padding:10px 12px; background:var(--bg); border:1px dashed var(--line); border-radius:8px; font-size:14px; }
-  .drill.ok { border-color:var(--best); color:var(--best); } .drill.no { border-color:var(--blunder); color:var(--blunder); }
-  .actions { display:flex; gap:8px; margin-top:10px; flex-wrap:wrap; }
-  .hidden { display:none !important; }
-  .line { font-family:ui-monospace,Menlo,monospace; font-size:13px; background:var(--bg); padding:2px 7px; border-radius:5px; }
-
-  /* viewer */
-  .viewer { display:grid; grid-template-columns:minmax(0,520px) 1fr; gap:18px; }
-  .bwrap { display:flex; gap:8px; }
-  .evbar { width:18px; flex:none; background:#222; border-radius:4px; overflow:hidden; position:relative; }
-  .evbar i { position:absolute; left:0; right:0; background:#f1f1f1; transition:height .2s; }
-  .moves { max-height:300px; overflow:auto; display:grid; grid-template-columns:34px 1fr 1fr; gap:2px; font-size:14px; align-content:start; }
-  .moves .n { color:var(--mute); padding:4px 0; text-align:right; padding-right:6px; }
-  .moves button { background:transparent; color:var(--ink); font-weight:500; text-align:left; padding:4px 8px; border-radius:5px; border:0; }
-  .moves button.cur { background:var(--panel2); outline:1px solid var(--blue); }
-  .nav { display:flex; gap:6px; margin:10px 0; }
-  .nav button { flex:1; }
-  .info { background:var(--bg); border:1px solid var(--line); border-radius:8px; padding:10px 12px; font-size:14px; min-height:84px; }
-  #graph { width:100%; height:90px; display:block; cursor:pointer; background:#2a2e36; border:1px solid var(--line); border-radius:8px; }
-  .c-best{color:var(--best)} .c-excellent{color:var(--good)} .c-good{color:var(--ink)} .c-inaccuracy{color:var(--inacc)} .c-mistake{color:var(--mistake)} .c-blunder{color:var(--blunder)}
-  .err { color:var(--blunder); }
-  .phase { display:flex; flex-direction:column; gap:8px; margin-top:4px; }
-  .phase div { display:grid; grid-template-columns:96px 1fr 44px; align-items:center; gap:10px; font-size:13px; }
-  .phase .t { height:8px; background:var(--bg); border-radius:4px; overflow:hidden; } .phase .t i { display:block; height:100%; background:var(--blue); }
-
-  /* ---- v3 UI ---- */
-  :focus-visible { outline:2px solid var(--blue); outline-offset:2px; }
-  button { transition:filter .15s, transform .05s, background .15s, border-color .15s; } button:active:not(:disabled) { transform:translateY(1px); }
-  .topbar { display:flex; align-items:center; justify-content:space-between; margin-bottom:6px; }
-  .brand { font-weight:700; font-size:17px; letter-spacing:-.01em; display:flex; align-items:center; gap:8px; }
-  .brand i { font-style:normal; font-size:22px; }
-  .iconbtn { background:var(--panel); color:var(--ink); border:1px solid var(--line); width:38px; height:38px; padding:0; border-radius:10px; font-size:17px; }
-  .hero { padding:26px 0 22px; }
-  .hero h1 { margin:0 0 10px; font-size:clamp(28px,5vw,40px); line-height:1.1; letter-spacing:-.03em; }
-  .hero p { margin:0 0 14px; color:var(--mute); font-size:17px; max-width:640px; }
-  .badges { display:flex; flex-wrap:wrap; gap:8px; }
-  .badges span { font-size:12.5px; padding:4px 11px; border-radius:99px; background:var(--panel); border:1px solid var(--line); color:var(--mute); }
-  .tabs { display:flex; gap:4px; background:var(--bg); padding:4px; border-radius:10px; width:max-content; max-width:100%; margin-bottom:16px; border:1px solid var(--line); }
-  .tab { background:transparent; color:var(--mute); font-weight:600; padding:7px 16px; border-radius:7px; }
-  .tab.on { background:var(--panel); color:var(--ink); box-shadow:var(--shadow); }
-  .opts, .how { margin-top:12px; font-size:14px; }
-  summary { cursor:pointer; color:var(--mute); } summary:hover { color:var(--ink); }
-  .opts .row { margin-top:10px; } .how ol { margin:8px 0 0; padding-left:20px; color:var(--mute); }
-  .status { display:flex; gap:14px; align-items:center; background:var(--panel); border:1px solid var(--line); border-radius:14px; padding:16px 18px; margin-bottom:14px; box-shadow:var(--shadow); }
-  .status:has(#msg:empty):has(#barwrap.hidden) { display:none; }
-  .status > div:last-child { flex:1; min-width:0; }
-  .spin { width:22px; height:22px; border-radius:50%; border:3px solid var(--line); border-top-color:var(--accent); animation:sp .8s linear infinite; display:none; flex:none; }
-  .status:has(#barwrap:not(.hidden)) .spin { display:block; }
-  @keyframes sp { to { transform:rotate(360deg); } }
-  #msg { font-size:14px; } #tip { font-size:13px; color:var(--mute); margin-top:6px; }
-  #barwrap.hidden + #tip { display:none; }
-  .jump { position:sticky; top:0; z-index:20; display:flex; gap:6px; overflow-x:auto; padding:10px 0; margin:0 0 4px; background:color-mix(in srgb, var(--bg) 88%, transparent); backdrop-filter:blur(8px); border-bottom:1px solid var(--line); }
-  .jump a { color:var(--mute); text-decoration:none; font-size:13.5px; font-weight:600; padding:6px 13px; border-radius:99px; white-space:nowrap; }
-  .jump a:hover { color:var(--ink); background:var(--panel); }
-  h3 { scroll-margin-top:60px; }
-  footer { margin-top:48px; padding-top:18px; border-top:1px solid var(--line); color:var(--mute); font-size:12.5px; line-height:1.7; }
-  footer a { color:var(--mute); }
-  .share { margin-top:14px; display:flex; gap:10px; align-items:center; flex-wrap:wrap; font-size:14px; }
-  .trow { display:grid; grid-template-columns:140px 1fr 150px; gap:10px; align-items:center; font-size:13px; margin:7px 0; }
-  .track { height:8px; background:var(--bg); border-radius:4px; overflow:hidden; border:1px solid var(--line); } .track i { display:block; height:100%; background:var(--blue); }
-  .sub { font-size:12.5px; color:var(--mute); margin:18px 0 6px; font-weight:600; }
-  .spark { width:100%; height:76px; display:block; background:var(--bg); border:1px solid var(--line); border-radius:8px; }
-  .optable { width:100%; border-collapse:collapse; font-size:14px; } .optable th { text-align:left; color:var(--mute); font-size:12px; font-weight:600; padding:6px 8px; }
-  .optable td { padding:8px; border-top:1px solid var(--line); } .optable tr.weak { background:var(--weakbg); }
-  .lesson { border-left:3px solid var(--blunder); }
-  @media (max-width:640px) {
-    .trow { grid-template-columns:96px 1fr; } .trow .mute { grid-column:1 / -1; margin-top:-4px; }
-    .optable th:nth-child(5), .optable td:nth-child(5) { display:none; }
-    .card { padding:16px; } .row > div { min-width:100%; } button { min-height:42px; } .tabs { width:100%; } .tab { flex:1; }
-  }
-  @media (prefers-reduced-motion:reduce) { * { animation:none !important; transition:none !important; scroll-behavior:auto !important; } }
-
-  .games { max-height:440px; overflow:auto; }
-  .games #batch { position:sticky; top:0; z-index:2; box-shadow:0 4px 8px -4px rgba(0,0,0,.35); }
-  .bgbar { position:fixed; left:50%; transform:translateX(-50%); bottom:14px; z-index:40; width:min(560px, calc(100% - 24px)); display:flex; gap:12px; align-items:center; background:var(--panel); border:1px solid var(--line); border-radius:14px; padding:12px 14px; box-shadow:0 8px 28px rgba(0,0,0,.35); font-size:13.5px; }
-  .bgbar .spin { display:block; } .bgbar.done .spin { display:none; }
-  /* ---- v4: stats + rundown ---- */
-  .hero-card { background:linear-gradient(135deg,var(--habitbg),var(--panel2)); border:1px solid var(--line); border-radius:12px; padding:16px 18px; }
-  .gcard { background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:14px 16px; margin-bottom:10px; box-shadow:var(--shadow); }
-  .ghead { display:flex; flex-wrap:wrap; align-items:center; gap:8px 10px; }
-  .gstat { margin-left:auto; font-weight:700; font-size:13px; } .ghead .sec { padding:5px 12px; font-size:13px; }
-  .trophy { font-size:12px; background:var(--habitbg); color:var(--best); padding:1px 9px; border-radius:99px; font-weight:600; }
-  .moments { margin-top:10px; display:grid; gap:6px; }
-  .moment { display:grid; grid-template-columns:1fr auto; gap:2px 12px; text-align:left; background:var(--bg); color:var(--ink); border:1px solid var(--line); border-radius:9px; padding:9px 12px; font-weight:400; }
-  .moment:hover:not(:disabled) { border-color:var(--blue); } .moment .go { grid-row:1 / span 2; grid-column:2; align-self:center; color:var(--blue); font-weight:600; font-size:13px; }
-  .moment:disabled { opacity:.7; cursor:default; }
-  .games button.done::after { content:'✓ analyzed'; margin-left:8px; color:var(--best); font-size:12px; font-weight:600; }
-  @media (max-width:640px) { .gstat { margin-left:0; width:100%; } }
-
-  /* ---- v7: dashboard + teaching ---- */
-  .dash { display:grid; grid-template-columns:repeat(3,1fr); gap:12px; }
-  .big { background:var(--panel); border:1px solid var(--line); border-radius:14px; padding:16px 18px; box-shadow:var(--shadow); display:flex; flex-direction:column; gap:4px; min-width:0; }
-  .bl { font-size:12px; font-weight:600; color:var(--mute); text-transform:uppercase; letter-spacing:.06em; }
-  .bv { font-size:38px; font-weight:800; letter-spacing:-.035em; line-height:1.1; } .bv .dim { color:var(--mute); font-weight:400; }
-  .bs { font-size:13px; color:var(--mute); min-height:20px; } .mini { width:100%; height:40px; margin-top:8px; overflow:visible; }
-  .chip { font-size:12px; font-weight:700; padding:1px 8px; border-radius:99px; } .chip.up { background:var(--winbg); color:var(--best); } .chip.down { background:var(--lossbg); color:var(--blunder); }
-  .rbar { display:flex; height:10px; border-radius:5px; overflow:hidden; background:var(--bg); margin:8px 0 2px; } .rbar i { display:block; height:100%; } .rbar .w { background:var(--best); } .rbar .d { background:#8b93a1; } .rbar .l { background:var(--blunder); }
-  .cols2 { display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-top:12px; }
-  .panel { background:var(--panel); border:1px solid var(--line); border-radius:14px; padding:16px 18px; box-shadow:var(--shadow); }
-  .panel h4 { margin:0 0 10px; font-size:13px; text-transform:uppercase; letter-spacing:.06em; color:var(--mute); }
-  .lrow { display:flex; justify-content:space-between; gap:12px; padding:9px 0; border-top:1px solid var(--line); font-size:14px; } .lrow:first-of-type { border-top:0; } .lrow b { font-variant-numeric:tabular-nums; }
-  .brow { display:grid; grid-template-columns:104px 1fr 42px; gap:10px; align-items:center; font-size:13.5px; padding:5px 0; } .brow b { text-align:right; font-variant-numeric:tabular-nums; }
-  .gap { height:10px; border-bottom:1px solid var(--line); margin-bottom:6px; }
-  .warn { font-style:normal; font-size:11px; font-weight:700; color:var(--mistake); text-transform:uppercase; letter-spacing:.04em; margin-left:4px; }
-  .train { display:grid; grid-template-columns:40px 1fr; gap:14px; }
-  .rank { width:34px; height:34px; border-radius:50%; background:var(--panel2); display:grid; place-items:center; font-weight:800; }
-  .teach { margin-top:14px; padding:14px 16px; border:1px solid var(--line); border-radius:12px; background:var(--bg); }
-  .teach .tt { font-weight:700; margin-bottom:6px; } .teach p { margin:6px 0; } .teach ol { margin:8px 0 10px; padding-left:20px; } .teach li { margin:4px 0; }
-  .practice { display:inline-block; font-size:13.5px; font-weight:600; color:var(--blue); text-decoration:none; } .practice:hover { text-decoration:underline; }
-  @media (max-width:760px) { .dash, .cols2 { grid-template-columns:1fr; } .bv { font-size:32px; } }
-</style>
+<title>Chess Coach: free game review that teaches</title>
+<meta name="description" content="Free chess game review that teaches. Stockfish 19 runs in your browser, finds the 3 mistakes that cost you the game and turns each into a puzzle. Nothing is uploaded.">
+<meta name="theme-color" content="#0e1319">
+<meta property="og:type" content="website">
+<meta property="og:title" content="Chess Coach: free game review that teaches">
+<meta property="og:description" content="Load your chess.com games. Stockfish 19 finds the mistakes that matter and turns them into puzzles. Free, private, runs in your browser.">
+<meta property="og:url" content="https://chessido.netlify.app/">
+<meta property="og:image" content="https://chessido.netlify.app/og.png">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="css/style.css?v=3">
 </head>
 <body>
 <main>
   <div class="topbar"><div class="brand"><i>♞</i> Chess Coach</div><button class="iconbtn" id="theme" title="Toggle light / dark" aria-label="Toggle theme">◐</button></div>
 
   <section class="hero">
-    <h1>Learn from every game you play.</h1>
-    <p>Load a chess.com game and get the 3 lessons that matter most, with puzzles to practice them, plus a tracker that shows the habits costing you games.</p>
-    <div class="badges"><span>100% free</span><span>Private: runs in your browser</span><span>Powered by Stockfish 19</span></div>
+    <div>
+      <h1>Find the move that lost you the game.</h1>
+      <p>Load your chess.com games or paste a PGN. Stockfish reviews every move, picks the three mistakes worth learning from, and turns each one into a puzzle you can solve.</p>
+      <div class="badges"><span>Free</span><span>Runs in your browser</span><span>Stockfish 19</span></div>
+    </div>
+    <figure class="demo" aria-label="Animated example: a game ending in checkmate after a blunder">
+      <div id="demoBoard"></div>
+      <figcaption><span class="demo-badge" id="demoBadge"></span><span id="demoText" aria-live="off"></span><button class="sec" id="demoGo" title="Run the full Stockfish review on this game">Review this game</button></figcaption>
+    </figure>
   </section>
 
   <section class="card">
-    <div class="tabs" role="tablist"><button class="tab on" data-tab="user" role="tab">chess.com username</button><button class="tab" data-tab="paste" role="tab">Paste a PGN</button></div>
+    <div class="tabs" role="tablist" id="tabs"><button class="tab on" data-tab="user" role="tab" aria-selected="true">chess.com</button><button class="tab" data-tab="paste" role="tab" aria-selected="false">Paste a PGN</button></div>
     <div id="tab-user">
       <div class="row"><div><label for="user">Your chess.com username</label><input id="user" placeholder="e.g. magnuscarlsen" autocomplete="off" autocapitalize="off" spellcheck="false"></div><button id="fetch">Find my games</button></div>
       <div class="row" style="margin-top:10px">
@@ -233,7 +67,7 @@
     Everything runs on your device. Your games and progress are stored only in this browser and are never uploaded.<br>
     Engine: <a href="https://github.com/official-stockfish/Stockfish" target="_blank" rel="noopener">Stockfish</a> 19 (GPLv3) via <a href="https://github.com/nmrugg/stockfish.js" target="_blank" rel="noopener">stockfish.js</a>, source code available at those links ·
     Pieces: cburnett by Colin M.L. Burnett (GPLv2+) from <a href="https://lichess.org" target="_blank" rel="noopener">Lichess</a> · Move logic: chess.js (BSD).
-    Not affiliated with chess.com. Auto-deployed from GitHub. Analysis is a learning aid, not a guarantee of best play.
+    Not affiliated with chess.com. Analysis is a learning aid, not a guarantee of best play.<br>Chess Coach is free software (<a href="https://github.com/Idosiloni/chess-coach/blob/main/LICENSE" target="_blank" rel="noopener">GPL-3.0</a>) · <a href="https://github.com/Idosiloni/chess-coach" target="_blank" rel="noopener">Source on GitHub</a>
   </footer>
 </main>
 
@@ -302,9 +136,9 @@ const moveTag = (i, san) => `${moveNo(i)}${i % 2 ? '…' : '.'}${san}`;
 
 /* =============================== board =============================== */
 class Board {
-  constructor(root) { this.root = root; root.classList.add('board'); }
+  constructor(root) { this.root = root; root.classList.add('board'); this.prev = null; }
   render(fen, o = {}) {
-    const { flip = false, last = [], arrows = [], sel = null, targets = [], onSquare = null } = o;
+    const { flip = false, last = [], arrows = [], sel = null, targets = [], onSquare = null, animate = false } = o;
     const rows = fen.split(' ')[0].split('/'), pcs = {};
     rows.forEach((row, ri) => { let f = 0; for (const ch of row) { if (/\d/.test(ch)) f += +ch; else { pcs['abcdefgh'[f] + (8 - ri)] = ch; f++; } } });
     let h = '';
@@ -326,6 +160,22 @@ class Board {
     this.root.innerHTML = h + svg + '</svg>';
     this.root.classList.toggle('click', !!onSquare);
     if (onSquare) this.root.querySelectorAll('.sq').forEach(e => e.onclick = () => onSquare(e.dataset.sq));
+    if (animate && this.prev && !matchMedia('(prefers-reduced-motion: reduce)').matches) this.slide(this.prev, pcs, flip);
+    this.prev = pcs;
+  }
+  // Slide each piece that changed square from where it used to be (a move, a capture or castling).
+  slide(from, to, flip) {
+    const gone = Object.keys(from).filter(sq => from[sq] !== to[sq]), came = Object.keys(to).filter(sq => from[sq] !== to[sq]);
+    if (!came.length || came.length > 2) return;
+    const xy = sq => [(flip ? 7 - (sq.charCodeAt(0) - 97) : sq.charCodeAt(0) - 97), (flip ? +sq[1] - 1 : 8 - +sq[1])];
+    came.forEach(dst => {
+      const src = gone.find(sq => from[sq] === to[dst]); if (!src) return;
+      const [x1, y1] = xy(src), [x2, y2] = xy(dst), el = this.root.querySelector(`.sq[data-sq="${dst}"]`);
+      if (!el || !el.firstElementChild || el.firstElementChild.tagName !== 'IMG') return;
+      el.classList.add('moving');
+      el.firstElementChild.animate([{ transform:`translate(${(x1 - x2) * 100}%,${(y1 - y2) * 100}%)` }, { transform:'none' }], { duration:200, easing:'cubic-bezier(.22,.8,.3,1)' })
+        .finished.then(() => el.classList.remove('moving'), () => el.classList.remove('moving'));
+    });
   }
 }
 
@@ -472,13 +322,14 @@ async function analyzePGN(pgn, sideSel, depth, prefix = '', ui = FG, prio = 'hi'
   return { hdr, side, moves, fens, L, data, depth, id };
 }
 
-async function run() {
+async function run(opts) {
+  const save = !(opts && opts.save === false); // the hero demo reviews a sample game without adding it to your progress
   if (busy) return;
   $('#out').innerHTML = ''; setBusy(true);
   try {
     const ctx = await analyzePGN($('#pgn').value.trim(), $('#side').value, +$('#depth').value);
     $('#msg').textContent = ''; setBusy(false);
-    render(ctx); saveGame(ctx); renderProgress();
+    render(ctx); if (save) { saveGame(ctx); renderProgress(); }
   } catch (e) { $('#msg').innerHTML = `<span class="err">${esc(e.message)}</span>`; setBusy(false); }
 }
 $('#go').onclick = run;
@@ -689,7 +540,7 @@ function render(ctx) {
   const opp = side === 'w' ? hdr.Black : hdr.White, me = side === 'w' ? hdr.White : hdr.Black;
   const opening = (hdr.ECOUrl || '').split('/').pop().replace(/-/g, ' ').replace(/\d+\..*$/, '').trim();
   const lessons = pickLessons(ctx), gs = gameStats(ctx);
-  const eloKpi = (gs.elo ? `<div class="kpi"><b>~${gs.elo}</b><span>estimated strength this game${gs.myElo ? ` · rated ${gs.myElo}` : ''}</span></div>` : '') + `<div class="kpi"><b>${gs.only}</b><span>only-moves found</span></div>`;
+  const eloKpi = (gs.elo ? `<div class="kpi"><b>~${gs.elo}</b><span>rough strength this game${gs.myElo ? ` · rated ${gs.myElo}` : ''}</span></div>` : '') + `<div class="kpi"><b>${gs.only}</b><span>only-moves found</span></div>`;
 
   /* phase accuracy */
   const ph = ['Opening', 'Middlegame', 'Endgame'].map(p => { const a = mine.filter(d => d.phase === p); return { p, n:a.length, acc:avg(a) }; }).filter(x => x.n);
@@ -762,10 +613,10 @@ function mountDrill(k, les, ctx) {
         const u = uciOf(mv);
         if (d.accept.includes(u)) {
           box.className = 'drill ok'; box.innerHTML = `✅ <b>${mv.san}</b> — that's it. In the game you played <b>${d.m.san}</b>.`;
-          const g2 = new Chess(les.fb); g2.move(mv); done = true; paint(g2.fen(), { last:[mv.from, mv.to] });
+          const g2 = new Chess(les.fb); g2.move(mv); done = true; paint(g2.fen(), { last:[mv.from, mv.to], animate:true });
           $(`#ex${k}`).classList.remove('hidden'); $(`#rev${k}`).classList.add('hidden'); return;
         }
-        box.className = 'drill no'; box.innerHTML = u === d.m.uci ? `❌ <b>${mv.san}</b> is what you played in the game. Look for something better.` : `❌ <b>${mv.san}</b> isn't the best here. Try again, or press "Show answer".`;
+        box.className = 'drill'; void box.offsetWidth; box.className = 'drill no'; box.innerHTML = u === d.m.uci ? `❌ <b>${mv.san}</b> is what you played in the game. Look for something better.` : `❌ <b>${mv.san}</b> isn't the best here. Try again, or press "Show answer".`;
         sel = null; paint(les.fb); board.root.querySelectorAll('.sq').forEach(e => e.onclick = () => click(e.dataset.sq)); return;
       }
     }
@@ -780,14 +631,14 @@ function mountDrill(k, les, ctx) {
 /* =============================== viewer =============================== */
 function mountViewer(ctx, lessons) {
   const { fens, moves, data, L, side } = ctx, n = moves.length, flip = side === 'b', board = new Board($('#vb'));
-  let idx = 0;
+  let idx = 0, prevIdx = -9;
   const wWin = j => { const cp = (fens[j].split(' ')[1] === 'w' ? 1 : -1) * L[j][0].cp; return winPct(cp); };
   const wCp = j => (fens[j].split(' ')[1] === 'w' ? 1 : -1) * L[j][0].cp;
 
   /* graph */
   const pts = fens.map((_, j) => [j / n * 600, 90 - wWin(j) * .9]);
   let path = 'M0,45 ' + pts.map(p => `L${p[0].toFixed(1)},${p[1].toFixed(1)}`).join(' ');
-  $('#graph').innerHTML = `<rect width="600" height="90" fill="none"/><path d="${path} L600,90 L0,90 Z" fill="rgba(240,240,240,.88)"/><line x1="0" y1="45" x2="600" y2="45" stroke="#888" stroke-width=".6" stroke-dasharray="3 3"/>`
+  $('#graph').innerHTML = `<rect width="600" height="90" fill="none"/><path class="g-area" d="${path} L600,90 L0,90 Z"/><line x1="0" y1="45" x2="600" y2="45" stroke="#888" stroke-width=".6" stroke-dasharray="3 3"/>`
     + lessons.map(l => `<circle cx="${((l.d.i + 1) / n * 600).toFixed(1)}" cy="${pts[l.d.i + 1][1].toFixed(1)}" r="4.5" fill="#f85149" stroke="#111" stroke-width="1.2"/>`).join('')
     + '<line id="gcur" y1="0" y2="90" stroke="#58a6ff" stroke-width="1.5"/>';
   $('#graph').onclick = e => { const r = e.currentTarget.getBoundingClientRect(); go(Math.round((e.clientX - r.left) / r.width * n)); };
@@ -823,9 +674,8 @@ function mountViewer(ctx, lessons) {
     const cp = wCp(idx), mate = Math.abs(cp) >= 9000 ? (cp > 0 ? 1 : -1) * (10000 - Math.abs(cp)) : null;
     info += `<div class="small mute" style="margin-top:6px">Evaluation: <b style="color:var(--ink)">${fmtEval(cp, mate)}</b> (White's view)</div>`;
     $('#vinfo').innerHTML = info;
-    board.render(fens[idx], { flip, last, arrows });
+    board.render(fens[idx], { flip, last, arrows, animate:Math.abs(idx - prevIdx) === 1 }); prevIdx = idx;
     const ww = wWin(idx); $('#evfill').style.cssText = flip ? `top:0;height:${ww}%` : `bottom:0;height:${ww}%`;
-    $('#evfill').parentElement.style.background = '#222';
     $('#gcur').setAttribute('x1', idx / n * 600); $('#gcur').setAttribute('x2', idx / n * 600);
     $('#mlist').querySelectorAll('button').forEach(b => b.classList.toggle('cur', +b.dataset.i === idx));
     const cur = $('#mlist button.cur'); if (cur) cur.scrollIntoView({ block:'nearest' });
@@ -890,11 +740,14 @@ async function openGame(id, ply) {
 }
 
 /* ---- per-game statistics ---- */
+/* Rough strength from average centipawn loss. Deliberately gentle: a few games at shallow depth are noisy,
+   so values are rounded to 50 and shown as approximate. Not a rating. */
+const eloFromAcpl = acpl => acpl == null ? null : Math.round(clamp(400 + 2300 * Math.exp(-0.016 * acpl), 400, 2600) / 50) * 50;
 function gameStats(ctx) {
   const { side, data, L, fens, hdr } = ctx, mine = data.filter(d => d.color === side), cl = x => clamp(x, -1000, 1000);
   const used = mine.filter(d => Math.abs(cl(d.before)) <= 800);
   const acpl = used.length ? used.reduce((s, d) => s + Math.min(600, Math.max(0, cl(d.before) - cl(d.after))), 0) / used.length : null;
-  const elo = acpl == null ? null : Math.round(clamp(3100 * Math.exp(-0.01 * acpl), 400, 2900) / 10) * 10;
+  const elo = used.length >= 15 ? eloFromAcpl(acpl) : null;
   let minWin = 100, maxWin = 0;
   fens.forEach((f, j) => { const w = winPct((f.split(' ')[1] === side ? 1 : -1) * L[j][0].cp); minWin = Math.min(minWin, w); maxWin = Math.max(maxWin, w); });
   const myElo = +(side === 'w' ? hdr.WhiteElo : hdr.BlackElo) || null, oppElo = +(side === 'w' ? hdr.BlackElo : hdr.WhiteElo) || null;
@@ -936,7 +789,8 @@ const meanOf = (a, f) => a.length ? a.reduce((s, r) => s + f(r), 0) / a.length :
 
 function dashboardHtml(g) {
   const n = g.length;
-  const withElo = g.filter(r => r.elo != null), est = withElo.length ? Math.round(meanOf(withElo.slice(-10), r => r.elo) / 10) * 10 : null;
+  g = g.map(r => r.elo != null && r.acpl != null ? { ...r, elo:eloFromAcpl(r.acpl) } : r);
+  const withElo = g.filter(r => r.elo != null), est = withElo.length ? Math.round(meanOf(withElo.slice(-10), r => r.elo) / 50) * 50 : null;
   const rated = g.filter(r => r.myElo), real = rated.length ? Math.round(meanOf(rated.slice(-10), r => r.myElo)) : null;
   const acc = meanOf(g, r => r.acc), recent = g.slice(-5), earlier = g.slice(-10, -5);
   const trend = earlier.length ? meanOf(recent, r => r.acc) - meanOf(earlier, r => r.acc) : null;
@@ -946,7 +800,7 @@ function dashboardHtml(g) {
 
   const hero = `<div class="dash">
     <div class="big"><div class="bl">Estimated strength</div><div class="bv">${est ? '~' + est : '–'}</div>
-      <div class="bs">${real ? `Your rating ~${real}${Math.abs(diff) >= 60 ? ` · you play about ${Math.abs(diff)} ${diff > 0 ? 'above' : 'below'} it` : ' · in line with it'}` : 'Based on your accuracy'}</div>${sparkline(withElo.map(r => r.elo), 'var(--blue)')}</div>
+      <div class="bs">${real ? `Your rating ~${real}${withElo.length < 3 ? '' : Math.abs(diff) >= 60 ? ` · you play about ${Math.abs(diff)} ${diff > 0 ? 'above' : 'below'} it` : ' · in line with it'}` : 'Based on your accuracy'}</div>${sparkline(withElo.map(r => r.elo), 'var(--blue)')}</div>
     <div class="big"><div class="bl">Average accuracy</div><div class="bv">${acc.toFixed(0)}%</div>
       <div class="bs">${trend != null ? `<span class="chip ${trend >= 0 ? 'up' : 'down'}">${trend >= 0 ? '▲' : '▼'} ${Math.abs(trend).toFixed(1)}</span> vs earlier games` : `Across ${n} game${n > 1 ? 's' : ''}`}</div>${sparkline(g.map(r => r.acc), 'var(--accent)')}</div>
     <div class="big"><div class="bl">Results</div><div class="bv">${rec.W}<span class="dim"> – </span>${rec.D}<span class="dim"> – </span>${rec.L}</div>
@@ -1014,12 +868,12 @@ function gamesHtml(g) {
       : '<div class="small mute">Run “Analyze” again to add key moments for this game.</div>';
     return `<div class="gcard"><div class="ghead">${pill(r)}<b>${r.color === 'w' ? '⚪' : '⚫'} vs ${esc(r.opp || '?')}</b>${badge.has(r.id) ? '<span class="trophy">🏆 best of day</span>' : ''}
       <span class="mute small">${esc(r.opening)} · ${fmtDate(r.date)}</span>
-      <span class="gstat">${r.acc.toFixed(0)}%${r.elo ? ` · ~${r.elo}` : ''}${c.blunder != null ? ` · ${c.blunder}?? ${c.mistake}?` : ''}</span>
+      <span class="gstat">${r.acc.toFixed(0)}%${r.elo ? ` · ~${eloFromAcpl(r.acpl) ?? r.elo}` : ''}${c.blunder != null ? ` · ${c.blunder}?? ${c.mistake}?` : ''}</span>
       ${canOpen ? `<button class="sec" data-open="${esc(r.id)}" data-ply="">Open review</button>` : ''}</div>
       <div class="moments">${moments}</div></div>`;
   };
   const heroHtml = hero ? `<div class="hero-card"><div class="small mute">🏆 Best game of ${fmtDate(latestDay === '?' ? '' : latestDay)}</div>
-      <div style="font-size:18px;font-weight:700;margin:2px 0">${pill(hero)} ${hero.color === 'w' ? '⚪' : '⚫'} vs ${esc(hero.opp || '?')} · ${hero.acc.toFixed(0)}% accuracy${hero.elo ? ` · played like ~${hero.elo}` : ''}</div>
+      <div style="font-size:18px;font-weight:700;margin:2px 0">${pill(hero)} ${hero.color === 'w' ? '⚪' : '⚫'} vs ${esc(hero.opp || '?')} · ${hero.acc.toFixed(0)}% accuracy${hero.elo ? ` · played like ~${eloFromAcpl(hero.acpl) ?? hero.elo}` : ''}</div>
       <div class="small mute">${esc(hero.opening)}${hero.only ? ` · found ${hero.only} only-move${hero.only > 1 ? 's' : ''}` : ''}${hero.myElo && hero.oppElo ? ` · rated ${hero.myElo} vs ${hero.oppElo}` : ''}</div>
       ${cache[hero.id] ? `<div class="actions"><button data-open="${esc(hero.id)}" data-ply="">Watch it</button></div>` : ''}</div>` : '';
   return `<h3 id="s-games">Your games</h3>${heroHtml}<div style="${hero ? 'margin-top:12px' : ''}">${newest.map(card).join('')}</div>`;
@@ -1049,7 +903,7 @@ function renderProgress() {
   const withElo = g.filter(r => r.elo != null);
   window.__progressPrompt = `You are a precise, encouraging chess coach. Below are statistics computed by Stockfish from my last ${n} games. Use ONLY these numbers; do not invent games or moves.
 
-Games analyzed: ${n}. Average accuracy ${meanOf(g, r => r.acc).toFixed(0)}%. Record ${rec.W}-${rec.D}-${rec.L}.${withElo.length ? ` Estimated strength about ${Math.round(meanOf(withElo.slice(-10), r => r.elo) / 10) * 10}.` : ''}
+Games analyzed: ${n}. Average accuracy ${meanOf(g, r => r.acc).toFixed(0)}%. Record ${rec.W}-${rec.D}-${rec.L}.${withElo.length ? ` Estimated strength about ${Math.round(meanOf(withElo.map(r => eloFromAcpl(r.acpl) ?? r.elo).slice(-10), x => x) / 50) * 50}.` : ''}
 Recurring mistake patterns (games affected): ${themes.map(([k, v]) => `${k} ${v.games}/${n}`).join('; ') || 'none'}.
 Openings: ${op.ops.map(o => `${o.name} as ${o.color === 'w' ? 'White' : 'Black'} (${o.n} games, ${(o.acc / o.n).toFixed(0)}% accuracy)`).join('; ')}.
 
@@ -1089,11 +943,52 @@ render = function (ctx) { _render(ctx); syncJump(); };
 renderProgress = function () { _renderProgress(); syncJump(); };
 
 $('#stop').onclick = () => { cancelBatch = true; $('#stop').textContent = 'Stopping…'; BG.msg('Stopping after this game…'); };
-/* tabs */
+/* tabs: the highlight slides under the active one */
+function placeTabIndicator() {
+  const on = $('.tab.on'), bar = $('#tabs'); if (!on || !on.offsetWidth) return;
+  bar.style.setProperty('--x', on.offsetLeft + 'px'); bar.style.setProperty('--w', on.offsetWidth + 'px');
+}
 document.querySelectorAll('.tab').forEach(t => t.onclick = () => {
-  document.querySelectorAll('.tab').forEach(x => x.classList.toggle('on', x === t));
+  document.querySelectorAll('.tab').forEach(x => { x.classList.toggle('on', x === t); x.setAttribute('aria-selected', x === t); });
   $('#tab-user').classList.toggle('hidden', t.dataset.tab !== 'user'); $('#tab-paste').classList.toggle('hidden', t.dataset.tab !== 'paste');
+  placeTabIndicator();
 });
+placeTabIndicator(); addEventListener('resize', placeTabIndicator); document.fonts && document.fonts.ready.then(placeTabIndicator);
+
+/* highlight the section you are reading in the sticky nav */
+if ('IntersectionObserver' in window) {
+  const io = new IntersectionObserver(es => es.forEach(e => {
+    if (!e.isIntersecting) return;
+    document.querySelectorAll('#jump a').forEach(a => a.classList.toggle('on', a.getAttribute('href') === '#' + e.target.id));
+  }), { rootMargin:'-80px 0px -70% 0px' });
+  new MutationObserver(() => document.querySelectorAll('#out h3[id], #prog h3[id]').forEach(h => io.observe(h))).observe(document.body, { childList:true, subtree:true });
+}
+
+/* hero demo: Légal's Mate on a loop. Annotations are hand-written; the "Review it" button runs the real analysis on the same game. */
+const DEMO = {
+  pgn:'[Event "Demo"]\n[White "White"]\n[Black "Black"]\n[Result "1-0"]\n\n1. e4 e5 2. Nf3 d6 3. Bc4 Bg4 4. Nc3 g6 5. Nxe5 Bxd1 6. Bxf7+ Ke7 7. Nd5# 1-0',
+  steps:[['', 'Both sides develop. Black pins the knight.'], ['', ''], ['', ''], ['', ''], ['', ''], ['', ''], ['', ''], ['', ''],
+    ['!', 'White gives up the queen on purpose.', 'best'], ['??', 'Black takes it, and walks into a forced mate.', 'blunder'], ['+', 'Check.'], ['', 'The only move.'], ['#', 'Checkmate. Three pieces did it.', 'best']]
+};
+(function demo() {
+  const board = new Board($('#demoBoard')), g = new Chess(), moves = new Chess(); moves.load_pgn(DEMO.pgn); const list = moves.history({ verbose:true });
+  const badge = $('#demoBadge'), text = $('#demoText'), INTRO = 'Légal’s Mate in 7 moves. Watch what one greedy capture costs.'; let k = 0, timer = null;
+  const home = () => { badge.dataset.k = ''; badge.textContent = 'Demo'; text.textContent = INTRO; };
+  const note = (i, st) => { badge.dataset.k = st[2] || ''; badge.textContent = list[i].san + (/^[!?]+$/.test(st[0]) ? st[0] : ''); if (st[1]) { badge.classList.remove('pop'); void badge.offsetWidth; badge.classList.add('pop'); } text.textContent = st[1] || text.textContent; };
+  const show = (animate) => { const m = k ? list[k - 1] : null; board.render(g.fen(), { last:m ? [m.from, m.to] : [], animate }); };
+  const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const step = () => {
+    if (k >= list.length) { timer = setTimeout(() => { g.reset(); k = 0; home(); show(false); timer = setTimeout(step, 900); }, 3200); return; }
+    const m = list[k]; g.move(m); k++; show(true); note(k - 1, DEMO.steps[k - 1] || ['', '']);
+    timer = setTimeout(step, DEMO.steps[k - 1] && DEMO.steps[k - 1][1] ? 1900 : 750);
+  };
+  if (reduce) { list.forEach(m => g.move(m)); k = list.length; show(false); note(k - 1, DEMO.steps[k - 1]); }
+  else { home(); show(false); timer = setTimeout(step, 1400); }
+  $('#demoBoard').onclick = () => { clearTimeout(timer); g.reset(); k = 0; home(); show(false); if (!reduce) timer = setTimeout(step, 500); };
+  $('#demoGo').onclick = () => {
+    $('[data-tab=paste]').click(); $('#pgn').value = DEMO.pgn; $('#side').value = 'b'; run({ save:false });
+  };
+})();
 /* remembered username + Enter key */
 try { const u = localStorage.getItem('coach.user'); if (u) $('#user').value = u; } catch (e) {}
 $('#user').addEventListener('keydown', e => { if (e.key === 'Enter') $('#fetch').click(); });

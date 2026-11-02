@@ -1,0 +1,26 @@
+<!doctype html>
+<!-- Source for og.png (the link-preview image). Open at 1200x630 and screenshot. -->
+<html lang="en"><head><meta charset="utf-8"><title>og</title>
+<link rel="stylesheet" href="../css/style.css">
+<style>
+  html, body { margin:0; width:1200px; height:630px; overflow:hidden; }
+  body { display:grid; grid-template-columns:1fr 470px; gap:56px; align-items:center; padding:0 72px; background:radial-gradient(900px 500px at 85% 10%, #1c2735 0%, var(--bg) 70%); }
+  .brand { margin-bottom:34px; } h1 { font-size:68px; line-height:1.03; margin:0 0 22px; letter-spacing:-.03em; }
+  p { margin:0; font-size:25px; line-height:1.45; color:var(--mute); max-width:520px; }
+  .tags { display:flex; gap:10px; margin-top:30px; } .tags span { border:1px solid var(--line); color:var(--mute); padding:6px 16px; border-radius:99px; font-size:19px; }
+  .b { position:relative; } .board { box-shadow:0 30px 60px -20px rgba(0,0,0,.7); border-radius:8px; }
+  .chip { position:absolute; left:-22px; top:-18px; z-index:6; font:700 24px var(--mono); background:var(--winbg); color:var(--best); padding:8px 16px; border-radius:10px; border:1px solid var(--best); }
+</style></head><body>
+<div><div class="brand"><i>♞</i> Chess Coach</div><h1>Find the move that lost you the game.</h1><p>Free game review that teaches. Stockfish finds your costliest mistakes and turns each into a puzzle.</p><div class="tags"><span>Free</span><span>Runs in your browser</span><span>Stockfish 19</span></div></div>
+<div class="b"><span class="chip">Qb8+!!</span><div id="bd"></div></div>
+<script src="../lib/chess.min.js"></script>
+<script>
+const seq='e4 e5 Nf3 d6 d4 Bg4 dxe5 Bxf3 Qxf3 dxe5 Bc4 Nf6 Qb3 Qe7 Nc3 c6 Bg5 b5 Nxb5 cxb5 Bxb5+ Nbd7 O-O-O Rd8 Rxd7 Rxd7 Rd1 Qe6 Bxd7+ Nxd7'.split(' ');
+const g=new Chess(); seq.forEach(m=>g.move(m,{sloppy:true}));
+const rows=g.fen().split(' ')[0].split('/'); let h='';
+rows.forEach((row,r)=>{let f=0;for(const ch of row){ if(/\d/.test(ch)){for(let i=0;i<+ch;i++){h+=cell(f++,r,'')}} else {h+=cell(f++,r,ch)} }});
+function cell(f,r,p){const d=(f+(7-r))%2?'':'d';return `<div class="sq ${d}">${p?`<img src="../pieces/${p===p.toUpperCase()?'w':'b'}${p.toUpperCase()}.svg" alt="">`:''}</div>`}
+const c=sq=>[sq.charCodeAt(0)-97+.5,8-sq[1]+.5];
+const [x1,y1]=c('b3'),[x2,y2]=c('b8');
+const bd=document.getElementById('bd'); bd.className='board'; bd.innerHTML=h+`<svg viewBox="0 0 8 8"><g opacity=".9" fill="#5dbb7a" stroke="#5dbb7a"><line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2+.4}" stroke-width=".17" stroke-linecap="round"/><polygon stroke="none" points="${x2},${y2-.02} ${x2-.24},${y2+.46} ${x2+.24},${y2+.46}"/></g></svg>`;
+</script></body></html>
