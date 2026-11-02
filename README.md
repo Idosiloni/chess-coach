@@ -21,6 +21,10 @@ Everything runs in your browser. Stockfish 19 is compiled to WebAssembly and run
 |---|---|
 | ![A key lesson with its board, explanation and habit to build](docs/lesson.png) | ![Game viewer with eval graph, board, arrows and move list](docs/viewer.png) |
 
+After a batch review, the progress dashboard shows your habits and where your accuracy drops (this one is from a real 12-game chess.com history):
+
+![Progress dashboard with habit counts and accuracy by phase, colour and result](docs/dashboard.png)
+
 ## How it works
 
 | Piece | What it does |
