@@ -67,6 +67,7 @@ engine/            Stockfish 19 lite single-thread WASM (GPLv3)
 lib/               chess.js 0.10.3 (move generation and PGN parsing)
 pieces/            cburnett piece set
 docs/              README screenshots and the source for the link-preview image
+scripts/           screenshots.mjs regenerates docs/*.png (headless Chrome, no dependencies)
 ```
 
 ## Roadmap
